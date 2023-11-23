@@ -100,30 +100,25 @@ module Isuconquest
       end
 
       def check_one_time_token!(token, token_type, request_at)
-        query = 'SELECT * FROM user_one_time_tokens WHERE token=? AND token_type=? AND deleted_at IS NULL'
-        tk = db.xquery(query, token, token_type).first
+        tk = db.xquery('SELECT * FROM user_one_time_tokens WHERE token=? AND token_type=? AND deleted_at IS NULL', token, token_type).first
         raise HttpError.new(400, 'invalid token') unless tk
 
         if tk.fetch(:expired_at) < request_at
-          query = 'UPDATE user_one_time_tokens SET deleted_at=? WHERE token=?'
-          db.xquery(query, request_at, token)
+          db.xquery('UPDATE user_one_time_tokens SET deleted_at=? WHERE token=?', request_at, token)
           raise HttpError.new(400, 'invalid token')
         end
 
         # 使ったトークンを失効する
-        query = 'UPDATE user_one_time_tokens SET deleted_at=? WHERE token=?'
-        db.xquery(query, request_at, token)
+        db.xquery('UPDATE user_one_time_tokens SET deleted_at=? WHERE token=?', request_at, token)
       end
 
       def check_viewer_id!(user_id, viewer_id)
-        query = 'SELECT * FROM user_devices WHERE user_id=? AND platform_id=?'
-        device = db.xquery(query, user_id, viewer_id).first
+        device = db.xquery('SELECT * FROM user_devices WHERE user_id=? AND platform_id=?', user_id, viewer_id).first
         raise HttpError.new(404, 'not found user device') unless device
       end
 
       def check_ban?(user_id)
-        query = 'SELECT * FROM user_bans WHERE user_id=?'
-        ban_user = db.xquery(query, user_id).first
+        ban_user = db.xquery('SELECT * FROM user_bans WHERE user_id=?', user_id).first
         return false unless ban_user
         true
       end
@@ -136,8 +131,7 @@ module Isuconquest
 
       # ログイン処理
       def login_process(user_id, request_at)
-        query = 'SELECT * FROM users WHERE id=?'
-        user = db.xquery(query, user_id).first&.then { User.new(_1) }
+        user = db.xquery('SELECT * FROM users WHERE id=?', user_id).first&.then { User.new(_1) }
         raise HttpError.new(404, 'not found user') unless user
 
         # ログインボーナス処理
@@ -153,8 +147,7 @@ module Isuconquest
         user.updated_at = request_at
         user.last_activated_at = request_at
 
-        query = 'UPDATE users SET updated_at=?, last_activated_at=? WHERE id=?'
-        db.xquery(query, request_at, request_at, user_id)
+        db.xquery('UPDATE users SET updated_at=?, last_activated_at=? WHERE id=?', request_at, request_at, user_id)
 
         [user, login_bonuses, all_presents]
       end
@@ -170,16 +163,14 @@ module Isuconquest
 
       def obtain_login_bonus(user_id, request_at)
         # login bonus masterから有効なログインボーナスを取得
-        query = 'SELECT * FROM login_bonus_masters WHERE start_at <= ? AND end_at >= ?'
-        login_bonuses = db.xquery(query, request_at, request_at)
+        login_bonuses = db.xquery('SELECT * FROM login_bonus_masters WHERE start_at <= ? AND end_at >= ?', request_at, request_at)
 
         send_login_bonuses = []
 
         login_bonuses.each do |bonus|
           init_bonus = false
           # ボーナスの進捗取得
-          query = 'SELECT * FROM user_login_bonuses WHERE user_id=? AND login_bonus_id=?'
-          user_bonus = db.xquery(query, user_id, bonus.fetch(:id)).first&.then { UserLoginBonus.new(_1) } # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+          user_bonus = db.xquery('SELECT * FROM user_login_bonuses WHERE user_id=? AND login_bonus_id=?', user_id, bonus.fetch(:id)).first&.then { UserLoginBonus.new(_1) } # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
           unless user_bonus
             init_bonus = true
 
@@ -210,19 +201,16 @@ module Isuconquest
           user_bonus.updated_at = request_at
 
           # 今回付与するリソース取得
-          query = 'SELECT * FROM login_bonus_reward_masters WHERE login_bonus_id=? AND reward_sequence=?'
-          reward_item = db.xquery(query, bonus.fetch(:id), user_bonus.last_reward_sequence).first # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+          reward_item = db.xquery('SELECT * FROM login_bonus_reward_masters WHERE login_bonus_id=? AND reward_sequence=?', bonus.fetch(:id), user_bonus.last_reward_sequence).first # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
           raise HttpError.new(404, 'not found login bonus reward') unless reward_item
 
           obtain_item(user_id, reward_item.fetch(:item_id), reward_item.fetch(:item_type), reward_item.fetch(:amount), request_at)
 
           # 進捗の保存
           if init_bonus
-            query = 'INSERT INTO user_login_bonuses(id, user_id, login_bonus_id, last_reward_sequence, loop_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-            db.xquery(query, user_bonus.id, user_bonus.user_id, user_bonus.login_bonus_id, user_bonus.last_reward_sequence, user_bonus.loop_count, user_bonus.created_at, user_bonus.updated_at) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+            db.xquery('INSERT INTO user_login_bonuses(id, user_id, login_bonus_id, last_reward_sequence, loop_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)', user_bonus.id, user_bonus.user_id, user_bonus.login_bonus_id, user_bonus.last_reward_sequence, user_bonus.loop_count, user_bonus.created_at, user_bonus.updated_at) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
           else
-            query = 'UPDATE user_login_bonuses SET last_reward_sequence=?, loop_count=?, updated_at=? WHERE id=?'
-            db.xquery(query, user_bonus.last_reward_sequence, user_bonus.loop_count, user_bonus.updated_at, user_bonus.id) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+            db.xquery('UPDATE user_login_bonuses SET last_reward_sequence=?, loop_count=?, updated_at=? WHERE id=?', user_bonus.last_reward_sequence, user_bonus.loop_count, user_bonus.updated_at, user_bonus.id) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
           end
 
           send_login_bonuses.push(user_bonus)
@@ -238,8 +226,7 @@ module Isuconquest
         normal_presents.each do |normal_present_|
           normal_present = PresentAllMaster.new(normal_present_)
 
-          query = 'SELECT * FROM user_present_all_received_history WHERE user_id=? AND present_all_id=?'
-          user_present_all_received_history = db.xquery(query, user_id, normal_present.id).first # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+          user_present_all_received_history = db.xquery('SELECT * FROM user_present_all_received_history WHERE user_id=? AND present_all_id=?', user_id, normal_present.id).first # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
           next if user_present_all_received_history # プレゼント配布済
 
           # user present boxに入れる
@@ -255,8 +242,7 @@ module Isuconquest
             created_at: request_at,
             updated_at: request_at,
           )
-          query = 'INSERT INTO user_presents(id, user_id, sent_at, item_type, item_id, amount, present_message, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-          db.xquery(query, user_present.id, user_present.user_id, user_present.sent_at, user_present.item_type, user_present.item_id, user_present.amount, user_present.present_message, user_present.created_at, user_present.updated_at) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+          db.xquery('INSERT INTO user_presents(id, user_id, sent_at, item_type, item_id, amount, present_message, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', user_present.id, user_present.user_id, user_present.sent_at, user_present.item_type, user_present.item_id, user_present.amount, user_present.present_message, user_present.created_at, user_present.updated_at) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
 
           # historyに入れる
           present_history_id = generate_id()
@@ -268,9 +254,8 @@ module Isuconquest
             created_at: request_at,
             updated_at: request_at,
           )
-          query = 'INSERT INTO user_present_all_received_history(id, user_id, present_all_id, received_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
           db.xquery(
-            query,
+            'INSERT INTO user_present_all_received_history(id, user_id, present_all_id, received_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
             history.id,
             history.user_id,
             history.present_all_id,
@@ -293,19 +278,16 @@ module Isuconquest
 
         case item_type
         when 1 # coin
-          query = 'SELECT * FROM users WHERE id=?'
-          user = db.xquery(query, user_id).first
+          user = db.xquery('SELECT * FROM users WHERE id=?', user_id).first
           raise HttpError.new(404, 'not found user') unless user
 
-          query = 'UPDATE users SET isu_coin=? WHERE id=?'
           total_coin = user.fetch(:isu_coin) + obtain_amount
-          db.xquery(query, total_coin, user_id)
+          db.xquery('UPDATE users SET isu_coin=? WHERE id=?', total_coin, user_id)
 
           obtain_coins.push(obtain_amount)
 
         when 2 # card(ハンマー)
-          query = 'SELECT * FROM item_masters WHERE id=? AND item_type=?'
-          item = db.xquery(query, item_id, item_type).first
+          item = db.xquery('SELECT * FROM item_masters WHERE id=? AND item_type=?', item_id, item_type).first
           raise HttpError.new(404, 'not found item') unless item
 
           user_card_id = generate_id()
@@ -319,19 +301,16 @@ module Isuconquest
             created_at: request_at,
             updated_at: request_at,
           )
-          query = 'INSERT INTO user_cards(id, user_id, card_id, amount_per_sec, level, total_exp, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-          db.xquery(query, card.id, card.user_id, card.card_id, card.amount_per_sec, card.level, card.total_exp, card.created_at, card.updated_at)
+          db.xquery('INSERT INTO user_cards(id, user_id, card_id, amount_per_sec, level, total_exp, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', card.id, card.user_id, card.card_id, card.amount_per_sec, card.level, card.total_exp, card.created_at, card.updated_at)
 
           obtain_cards.push(card)
 
         when 3, 4 # 強化素材
-          query = 'SELECT * FROM item_masters WHERE id=? AND item_type=?'
-          item = db.xquery(query, item_id, item_type).first
+          item = db.xquery('SELECT * FROM item_masters WHERE id=? AND item_type=?', item_id, item_type).first
           raise HttpError.new(404, 'not found item') unless item
 
           # 所持数取得
-          query = 'SELECT * FROM user_items WHERE user_id=? AND item_id=?'
-          user_item = db.xquery(query, user_id, item.fetch(:id)).first&.then { UserItem.new(_1) }
+          user_item = db.xquery('SELECT * FROM user_items WHERE user_id=? AND item_id=?', user_id, item.fetch(:id)).first&.then { UserItem.new(_1) }
           if user_item.nil? # 新規作成
             user_item_id = generate_id()
             user_item = UserItem.new(
@@ -343,13 +322,11 @@ module Isuconquest
               created_at: request_at,
               updated_at: request_at,
             )
-            query = "INSERT INTO user_items(id, user_id, item_id, item_type, amount, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-            db.xquery(query, user_item.id, user_id, user_item.item_id, user_item.item_type, user_item.amount, request_at, request_at)
+            db.xquery("INSERT INTO user_items(id, user_id, item_id, item_type, amount, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)", user_item.id, user_id, user_item.item_id, user_item.item_type, user_item.amount, request_at, request_at)
           else # 更新
             user_item.amount += obtain_amount
             user_item.updated_at = request_at
-            query = 'UPDATE user_items SET amount=?, updated_at=? WHERE id=?'
-            db.xquery(query, user_item.amount, user_item.updated_at, user_item.id)
+            db.xquery('UPDATE user_items SET amount=?, updated_at=? WHERE id=?', user_item.amount, user_item.updated_at, user_item.id)
           end
 
           obtain_items.push(user_item)
@@ -434,8 +411,7 @@ module Isuconquest
 
         request_at = get_request_time()
 
-        query = 'SELECT * FROM user_sessions WHERE session_id=? AND deleted_at IS NULL'
-        user_session = db.xquery(query, sess_id).first
+        user_session = db.xquery('SELECT * FROM user_sessions WHERE session_id=? AND deleted_at IS NULL', sess_id).first
         raise HttpError.new(401, 'unauthorized user') if user_session.nil?
 
         if user_session.fetch(:user_id) != user_id
@@ -443,8 +419,7 @@ module Isuconquest
         end
 
         if user_session.fetch(:expired_at) < request_at
-          query = 'UPDATE user_sessions SET deleted_at=? WHERE session_id=?'
-          db.xquery(query, request_at, sess_id)
+          db.xquery('UPDATE user_sessions SET deleted_at=? WHERE session_id=?', request_at, sess_id)
           raise HttpError.new(401, 'session expired')
         end
       end
@@ -488,8 +463,7 @@ module Isuconquest
           updated_at: request_at,
         )
 
-        query = 'INSERT INTO users(id, last_activated_at, registered_at, last_getreward_at, created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?)'
-        db.xquery(query, user.id, user.last_activated_at, user.registered_at, user.last_getreward_at, user.created_at, user.updated_at)
+        db.xquery('INSERT INTO users(id, last_activated_at, registered_at, last_getreward_at, created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?)', user.id, user.last_activated_at, user.registered_at, user.last_getreward_at, user.created_at, user.updated_at)
 
         user_device_id = generate_id()
         user_device = UserDevice.new(
@@ -500,12 +474,10 @@ module Isuconquest
           created_at: request_at,
           updated_at: request_at,
         )
-        query = 'INSERT INTO user_devices(id, user_id, platform_id, platform_type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-        db.xquery(query, user_device.id, user.id, json_params.fetch(:viewerId), json_params.fetch(:platformType), request_at, request_at)
+        db.xquery('INSERT INTO user_devices(id, user_id, platform_id, platform_type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)', user_device.id, user.id, json_params.fetch(:viewerId), json_params.fetch(:platformType), request_at, request_at)
 
         # 初期デッキ付与
-        query = 'SELECT * FROM item_masters WHERE id=?'
-        init_card = db.xquery(query, 2).first
+        init_card = db.xquery('SELECT * FROM item_masters WHERE id=?', 2).first
         raise HttpError.new(404, 'not found item') unless init_card
 
         init_cards = Array.new(3) do
@@ -520,8 +492,7 @@ module Isuconquest
             created_at: request_at,
             updated_at: request_at,
           )
-          query = 'INSERT INTO user_cards(id, user_id, card_id, amount_per_sec, level, total_exp, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-          db.xquery(query, card.id, card.user_id, card.card_id, card.amount_per_sec, card.level, card.total_exp, card.created_at, card.updated_at)
+          db.xquery('INSERT INTO user_cards(id, user_id, card_id, amount_per_sec, level, total_exp, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', card.id, card.user_id, card.card_id, card.amount_per_sec, card.level, card.total_exp, card.created_at, card.updated_at)
 
           card
         end
@@ -536,8 +507,7 @@ module Isuconquest
           created_at: request_at,
           updated_at: request_at,
         )
-        query = 'INSERT INTO user_decks(id, user_id, user_card_id_1, user_card_id_2, user_card_id_3, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        db.xquery(query, init_deck.id, init_deck.user_id, init_deck.user_card_id_1, init_deck.user_card_id_2, init_deck.user_card_id_3, init_deck.created_at, init_deck.updated_at)
+        db.xquery('INSERT INTO user_decks(id, user_id, user_card_id_1, user_card_id_2, user_card_id_3, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)', init_deck.id, init_deck.user_id, init_deck.user_card_id_1, init_deck.user_card_id_2, init_deck.user_card_id_3, init_deck.created_at, init_deck.updated_at)
 
         # ログイン処理
         user, login_bonuses, presents = login_process(user_id, request_at)
@@ -553,8 +523,7 @@ module Isuconquest
           updated_at: request_at,
           expired_at: request_at + 86400,
         )
-        query = 'INSERT INTO user_sessions(id, user_id, session_id, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?, ?)'
-        db.xquery(query, sess.id, sess.user_id, sess.session_id, sess.created_at, sess.updated_at, sess.expired_at)
+        db.xquery('INSERT INTO user_sessions(id, user_id, session_id, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?, ?)', sess.id, sess.user_id, sess.session_id, sess.created_at, sess.updated_at, sess.expired_at)
 
         json(
           userId: user.id,
@@ -570,8 +539,7 @@ module Isuconquest
     post '/login' do
       request_at = get_request_time()
 
-      query = 'SELECT * FROM users WHERE id=?'
-      user = db.xquery(query, json_params[:userId]).first&.then { User.new(_1) }
+      user = db.xquery('SELECT * FROM users WHERE id=?', json_params[:userId]).first&.then { User.new(_1) }
       raise HttpError.new(404, 'not found user') unless user
 
       # check ban
@@ -583,8 +551,7 @@ module Isuconquest
 
       db_transaction do
         # sessionを更新
-        query = 'UPDATE user_sessions SET deleted_at=? WHERE user_id=? AND deleted_at IS NULL'
-        db.xquery(query, request_at, json_params[:userId])
+        db.xquery('UPDATE user_sessions SET deleted_at=? WHERE user_id=? AND deleted_at IS NULL', request_at, json_params[:userId])
 
         session_id = generate_id()
         sess_id = generate_uuid()
@@ -596,16 +563,14 @@ module Isuconquest
           updated_at: request_at,
           expired_at: request_at + 86400,
         )
-        query = 'INSERT INTO user_sessions(id, user_id, session_id, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?, ?)'
-        db.xquery(query, sess.id, sess.user_id, sess.session_id, sess.created_at, sess.updated_at, sess.expired_at)
+        db.xquery('INSERT INTO user_sessions(id, user_id, session_id, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?, ?)', sess.id, sess.user_id, sess.session_id, sess.created_at, sess.updated_at, sess.expired_at)
 
         # すでにログインしているユーザはログイン処理をしない
         if complete_today_login?(user.last_activated_at, request_at)
           user.updated_at = request_at
           user.last_activated_at = request_at
 
-          query = 'UPDATE users SET updated_at=?, last_activated_at=? WHERE id=?'
-          db.xquery(query, request_at, request_at, json_params[:userId])
+          db.xquery('UPDATE users SET updated_at=?, last_activated_at=? WHERE id=?', request_at, request_at, json_params[:userId])
 
           next json(
             viewerId: json_params[:viewerId],
@@ -630,8 +595,7 @@ module Isuconquest
       user_id = get_user_id()
       request_at = get_request_time()
 
-      query = 'SELECT * FROM gacha_masters WHERE start_at <= ? AND end_at >= ? ORDER BY display_order ASC'
-      gacha_master_list = db.xquery(query, request_at, request_at).to_a
+      gacha_master_list = db.xquery('SELECT * FROM gacha_masters WHERE start_at <= ? AND end_at >= ? ORDER BY display_order ASC', request_at, request_at).to_a
 
       if gacha_master_list.empty?
         next json(
@@ -642,9 +606,8 @@ module Isuconquest
 
       # ガチャ排出アイテム取得
       gacha_data_list = []
-      query = 'SELECT * FROM gacha_item_masters WHERE gacha_id=? ORDER BY id ASC'
       gacha_master_list.each do |v|
-        gacha_item = db.xquery(query, v.fetch(:id)).to_a # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+        gacha_item = db.xquery('SELECT * FROM gacha_item_masters WHERE gacha_id=? ORDER BY id ASC', v.fetch(:id)).to_a # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
         raise HttpError.new(404, 'not found gacha item') if gacha_item.empty?
 
         gacha_data_list.push(
@@ -653,8 +616,7 @@ module Isuconquest
         )
       end
       # generate one time token
-      query = 'UPDATE user_one_time_tokens SET deleted_at=? WHERE user_id=? AND deleted_at IS NULL'
-      db.xquery(query, request_at, user_id)
+      db.xquery('UPDATE user_one_time_tokens SET deleted_at=? WHERE user_id=? AND deleted_at IS NULL', request_at, user_id)
       token_id = generate_id()
       tk = generate_uuid()
       token = UserOneTimeToken.new(
@@ -666,8 +628,7 @@ module Isuconquest
         updated_at: request_at,
         expired_at: request_at + 600,
       )
-      query = 'INSERT INTO user_one_time_tokens(id, user_id, token, token_type, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-      db.xquery(query, token.id, token.user_id, token.token, token.token_type, token.created_at, token.updated_at, token.expired_at)
+      db.xquery('INSERT INTO user_one_time_tokens(id, user_id, token, token_type, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?, ?, ?)', token.id, token.user_id, token.token, token.token_type, token.created_at, token.updated_at, token.expired_at)
 
       json(
         oneTimeToken: token.token,
@@ -699,14 +660,12 @@ module Isuconquest
       consumed_coin = gacha_count * 1000
 
       # userのisuconが足りるか
-      query = 'SELECT * FROM users WHERE id=?'
-      user = db.xquery(query, user_id).first
+      user = db.xquery('SELECT * FROM users WHERE id=?', user_id).first
       raise HttpError.new(404, 'not found user') unless user
       raise HttpError.new(409, 'not enough isucon') if user.fetch(:isu_coin) < consumed_coin
 
       # gachaIDからガチャマスタの取得
-      query = 'SELECT * FROM gacha_masters WHERE id=? AND start_at <= ? AND end_at >= ?'
-      gacha_info = db.xquery(query, gacha_id, request_at, request_at).first
+      gacha_info = db.xquery('SELECT * FROM gacha_masters WHERE id=? AND start_at <= ? AND end_at >= ?', gacha_id, request_at, request_at).first
       raise HttpError.new(404, 'not found gacha') unless gacha_info
 
       # gachaItemMasterからアイテムリスト取得
@@ -748,16 +707,14 @@ module Isuconquest
             created_at: request_at,
             updated_at: request_at,
           )
-          query = 'INSERT INTO user_presents(id, user_id, sent_at, item_type, item_id, amount, present_message, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-          db.xquery(query, present.id, present.user_id, present.sent_at, present.item_type, present.item_id, present.amount, present.present_message, present.created_at, present.updated_at) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+          db.xquery('INSERT INTO user_presents(id, user_id, sent_at, item_type, item_id, amount, present_message, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', present.id, present.user_id, present.sent_at, present.item_type, present.item_id, present.amount, present.present_message, present.created_at, present.updated_at) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
 
           presents.push(present)
         end
 
         # isuconをへらす
-        query = 'UPDATE users SET isu_coin=? WHERE id=?'
         total_coin = user.fetch(:isu_coin) - consumed_coin
-        db.xquery(query, total_coin, user_id)
+        db.xquery('UPDATE users SET isu_coin=? WHERE id=?', total_coin, user_id)
 
         json(
           presents: presents.map(&:as_json),
@@ -783,13 +740,12 @@ module Isuconquest
       end
 
       offset = PRESENT_COUNT_PER_PAGE * (n - 1)
-      query = <<~EOF
+      present_list = db.xquery(<<~SQL, user_id).to_a
         SELECT * FROM user_presents
         WHERE user_id = ? AND deleted_at IS NULL
         ORDER BY created_at DESC, id
         LIMIT #{PRESENT_COUNT_PER_PAGE} OFFSET #{offset}
-      EOF
-      present_list = db.xquery(query, user_id).to_a
+      SQL
 
       present_count = db.xquery('SELECT COUNT(*) as cnt FROM user_presents WHERE user_id = ? AND deleted_at IS NULL', user_id).first.fetch(:cnt)
 
@@ -813,8 +769,7 @@ module Isuconquest
       check_viewer_id!(user_id, json_params[:viewerId])
 
       # user_presentsに入っているが未取得のプレゼント取得
-      query = 'SELECT * FROM user_presents WHERE id IN (?) AND deleted_at IS NULL'
-      obtain_present = db.xquery(query, json_params[:presentIds]).map { UserPresent.new(_1) }
+      obtain_present = db.xquery('SELECT * FROM user_presents WHERE id IN (?) AND deleted_at IS NULL', json_params[:presentIds]).map { UserPresent.new(_1) }
       
       if obtain_present.empty?
         next json(
@@ -829,8 +784,7 @@ module Isuconquest
           v.updated_at = request_at
           v.deleted_at = request_at
 
-          query = 'UPDATE user_presents SET deleted_at=?, updated_at=? WHERE id=?'
-          db.xquery(query, request_at, request_at, v.id) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+          db.xquery('UPDATE user_presents SET deleted_at=?, updated_at=? WHERE id=?', request_at, request_at, v.id) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
 
           obtain_item(v.user_id, v.item_id, v.item_type, v.amount, request_at)
         end
@@ -847,19 +801,14 @@ module Isuconquest
 
       request_at = get_request_time()
 
-      query = 'SELECT * FROM users WHERE id=?'
-      user = db.xquery(query, user_id).first
-      raise HttpError.new(404, 'not found user') unless user
+      raise HttpError.new(404, 'not found user') unless db.xquery('SELECT * FROM users WHERE id=?', user_id).first
 
-      query = 'SELECT * FROM user_items WHERE user_id = ?'
-      item_list = db.xquery(query, user_id).to_a
+      item_list = db.xquery('SELECT * FROM user_items WHERE user_id = ?', user_id).to_a
 
-      query = 'SELECT * FROM user_cards WHERE user_id=?'
-      card_list = db.xquery(query, user_id).to_a
+      card_list = db.xquery('SELECT * FROM user_cards WHERE user_id=?', user_id).to_a
 
       # generate one time token
-      query = 'UPDATE user_one_time_tokens SET deleted_at=? WHERE user_id=? AND deleted_at IS NULL'
-      db.xquery(query, request_at, user_id)
+      db.xquery('UPDATE user_one_time_tokens SET deleted_at=? WHERE user_id=? AND deleted_at IS NULL', request_at, user_id)
 
       token_id = generate_id()
       tk = generate_uuid()
@@ -872,8 +821,7 @@ module Isuconquest
         updated_at: request_at,
         expired_at: request_at + 600,
       )
-      query = 'INSERT INTO user_one_time_tokens(id, user_id, token, token_type, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-      db.xquery(query, token.id, token.user_id, token.token, token.token_type, token.created_at, token.updated_at, token.expired_at)
+      db.xquery('INSERT INTO user_one_time_tokens(id, user_id, token, token_type, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?, ?, ?)', token.id, token.user_id, token.token, token.token_type, token.created_at, token.updated_at, token.expired_at)
 
       json(
         oneTimeToken: token.token,
@@ -934,13 +882,13 @@ module Isuconquest
       check_viewer_id!(user_id, json_params[:viewerId])
 
       # get target card
-      query = <<~EOF
+      card = db.xquery(<<~SQL, card_id, user_id).first&.then { TargetUserCardData.new(_1) }
         SELECT uc.id , uc.user_id , uc.card_id , uc.amount_per_sec , uc.level, uc.total_exp, im.amount_per_sec as 'base_amount_per_sec', im.max_level , im.max_amount_per_sec , im.base_exp_per_level
         FROM user_cards as uc
         INNER JOIN item_masters as im ON uc.card_id = im.id
         WHERE uc.id = ? AND uc.user_id=?
-      EOF
-      card = db.xquery(query, card_id, user_id).first&.then { TargetUserCardData.new(_1) }
+      SQL
+
       raise HttpError.new(404, '') unless card
 
       if card.level == card.max_level
@@ -949,14 +897,13 @@ module Isuconquest
 
       # 消費アイテムの所持チェック
       items = []
-      query = <<~EOF
-        SELECT ui.id, ui.user_id, ui.item_id, ui.item_type, ui.amount, ui.created_at, ui.updated_at, im.gained_exp
-        FROM user_items as ui
-        INNER JOIN item_masters as im ON ui.item_id = im.id
-        WHERE ui.item_type = 3 AND ui.id=? AND ui.user_id=?
-      EOF
       json_params[:items].each do |v|
-        item = db.xquery(query, v[:id], user_id).first&.then { ConsumeUserItemData.new(_1) } # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+        item = db.xquery(<<~SQL, v[:id], user_id).first&.then { ConsumeUserItemData.new(_1) } # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+          SELECT ui.id, ui.user_id, ui.item_id, ui.item_type, ui.amount, ui.created_at, ui.updated_at, im.gained_exp
+          FROM user_items as ui
+          INNER JOIN item_masters as im ON ui.item_id = im.id
+          WHERE ui.item_type = 3 AND ui.id=? AND ui.user_id=?
+        SQL
         raise HttpError.new(404, '') unless item
 
         raise HttpError.new(400, 'item not enough') if v[:amount] > item.amount
@@ -983,17 +930,14 @@ module Isuconquest
 
       db_transaction do
         # cardのlvと経験値の更新、itemの消費
-        query = 'UPDATE user_cards SET amount_per_sec=?, level=?, total_exp=?, updated_at=? WHERE id=?'
-        db.xquery(query, card.amount_per_sec, card.level, card.total_exp, request_at, card.id)
+        db.xquery('UPDATE user_cards SET amount_per_sec=?, level=?, total_exp=?, updated_at=? WHERE id=?', card.amount_per_sec, card.level, card.total_exp, request_at, card.id)
 
-        query = 'UPDATE user_items SET amount=?, updated_at=? WHERE id=?'
         items.each do |v|
-          db.xquery(query, v.amount - v.consume_amount, request_at, v.id) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+          db.xquery('UPDATE user_items SET amount=?, updated_at=? WHERE id=?', v.amount - v.consume_amount, request_at, v.id) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
         end
 
         # get response data
-        query = 'SELECT * FROM user_cards WHERE id=?'
-        result_card = db.xquery(query, card.id).first&.then { UserCard.new(_1) }
+        result_card = db.xquery('SELECT * FROM user_cards WHERE id=?', card.id).first&.then { UserCard.new(_1) }
         raise HttpError.new(404, 'not found card') unless result_card
         result_items = items.map do |v|
           UserItem.new(
@@ -1026,14 +970,12 @@ module Isuconquest
       check_viewer_id!(user_id, json_params[:viewerId])
 
       # カード所持情報のバリデーション
-      query = 'SELECT * FROM user_cards WHERE id IN (?)'
-      cards = db.xquery(query, json_params.fetch(:cardIds)).to_a
+      cards = db.xquery('SELECT * FROM user_cards WHERE id IN (?)', json_params.fetch(:cardIds)).to_a
       raise HttpError.new(400, 'invalid card ids') if cards.size != DECK_CARD_NUMBER
 
       db_transaction do
         # update data
-        query = 'UPDATE user_decks SET updated_at=?, deleted_at=? WHERE user_id=? AND deleted_at IS NULL'
-        db.xquery(query, request_at, request_at, user_id)
+        db.xquery('UPDATE user_decks SET updated_at=?, deleted_at=? WHERE user_id=? AND deleted_at IS NULL', request_at, request_at, user_id)
 
         user_deck_id = generate_id()
         new_deck = UserDeck.new(
@@ -1045,8 +987,7 @@ module Isuconquest
           created_at: request_at,
           updated_at: request_at,
         )
-        query = 'INSERT INTO user_decks(id, user_id, user_card_id_1, user_card_id_2, user_card_id_3, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        db.xquery(query, new_deck.id, new_deck.user_id, new_deck.user_card_id_1, new_deck.user_card_id_2, new_deck.user_card_id_3, new_deck.created_at, new_deck.updated_at)
+        db.xquery('INSERT INTO user_decks(id, user_id, user_card_id_1, user_card_id_2, user_card_id_3, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)', new_deck.id, new_deck.user_id, new_deck.user_card_id_1, new_deck.user_card_id_2, new_deck.user_card_id_3, new_deck.created_at, new_deck.updated_at)
 
         json(
           updatedResources: UpdatedResources.new(request_at, nil, nil, nil, [new_deck], nil, nil, nil).as_json,
@@ -1063,17 +1004,14 @@ module Isuconquest
       check_viewer_id!(user_id, json_params[:viewerId])
 
       # 最後に取得した報酬時刻取得
-      query = 'SELECT * FROM users WHERE id=?'
-      user = db.xquery(query, user_id).first&.then { User.new(_1) }
+      user = db.xquery('SELECT * FROM users WHERE id=?', user_id).first&.then { User.new(_1) }
       raise HttpError.new(404, 'not found user') unless user
 
       # 使っているデッキの取得
-      query = 'SELECT * FROM user_decks WHERE user_id=? AND deleted_at IS NULL'
-      deck = db.xquery(query, user_id).first
+      deck = db.xquery('SELECT * FROM user_decks WHERE user_id=? AND deleted_at IS NULL', user_id).first
       raise HttpError.new(404, '') unless deck
 
-      query = 'SELECT * FROM user_cards WHERE id IN (?, ?, ?)'
-      cards = db.xquery(query, deck.fetch(:user_card_id_1), deck.fetch(:user_card_id_2), deck.fetch(:user_card_id_3)).to_a
+      cards = db.xquery('SELECT * FROM user_cards WHERE id IN (?, ?, ?)', deck.fetch(:user_card_id_1), deck.fetch(:user_card_id_2), deck.fetch(:user_card_id_3)).to_a
       raise HttpError.new(400, 'invalid card length') if cards.size != 3
 
       # 経過時間*生産性のcoin (1椅子 = 1coin)
@@ -1083,8 +1021,7 @@ module Isuconquest
       # 報酬の保存(ゲームない通貨を保存)(users)
       user.isu_coin += get_coin
       user.last_getreward_at = request_at
-      query = 'UPDATE users SET isu_coin=?, last_getreward_at=? WHERE id=?'
-      db.xquery(query, user.isu_coin, user.last_getreward_at, user.id)
+      db.xquery('UPDATE users SET isu_coin=?, last_getreward_at=? WHERE id=?', user.isu_coin, user.last_getreward_at, user.id)
 
       json(
         updatedResources: UpdatedResources.new(request_at, user, nil, nil, nil, nil, nil).as_json,
@@ -1098,8 +1035,7 @@ module Isuconquest
       request_at = get_request_time()
 
       # 装備情報
-      query = 'SELECT * FROM user_decks WHERE user_id=? AND deleted_at IS NULL'
-      deck = db.xquery(query, user_id).first&.then { UserDeck.new(_1) }
+      deck = db.xquery('SELECT * FROM user_decks WHERE user_id=? AND deleted_at IS NULL', user_id).first&.then { UserDeck.new(_1) }
 
       # 生産性
       cards = []
@@ -1110,8 +1046,7 @@ module Isuconquest
       total_amount_per_sec = cards.sum(&:amount_per_sec)
 
       # 経過時間
-      query = 'SELECT * FROM users WHERE id=?'
-      user = db.xquery(query, user_id).first&.then { User.new(_1) }
+      user = db.xquery('SELECT * FROM users WHERE id=?', user_id).first&.then { User.new(_1) }
       raise HttpError.new(404, 'not found user') unless user
       past_time = request_at - user.last_getreward_at
 
