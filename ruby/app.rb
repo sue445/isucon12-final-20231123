@@ -69,7 +69,8 @@ module Isuconquest
         raise HttpError.new(400, e.inspect)
       end
 
-      def connect_db(batch = false)
+      # def connect_db(batch = false)
+      def connect_db(batch: false)
         Mysql2::Client.new(
           host: ENV.fetch('ISUCON_DB_HOST', '127.0.0.1'),
           port: ENV.fetch('ISUCON_DB_PORT', '3306').to_i,
@@ -447,7 +448,8 @@ module Isuconquest
     end
 
     post '/initialize' do
-      connect_db(true)
+      # connect_db(true)
+      connect_db(batch: true)
 
       out, status = Open3.capture2e("/bin/sh", "-c", "#{SQL_DIRECTORY}init.sh")
       unless status.success?
