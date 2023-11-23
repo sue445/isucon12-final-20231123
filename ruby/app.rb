@@ -254,6 +254,8 @@ module Isuconquest
             created_at: request_at,
             updated_at: request_at,
           )
+
+          # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
           db.xquery(
             'INSERT INTO user_present_all_received_history(id, user_id, present_all_id, received_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
             history.id,
@@ -262,7 +264,8 @@ module Isuconquest
             history.received_at,
             history.created_at,
             history.updated_at,
-          ) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+          )
+          # rubocop:enable Isucon/Mysql2/NPlusOneQuery
 
           obtain_presents.push(user_present)
         end
