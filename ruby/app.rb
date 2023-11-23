@@ -326,10 +326,10 @@ module Isuconquest
         bulk_insert_user_presents = []
         bulk_insert_history = []
 
-        user_presents_sql = "INSERT INTO user_presents(id, user_id, sent_at, item_type, item_id, amount, present_message, created_at, updated_at) VALUES "
+        user_presents_sql_prefix = "INSERT INTO user_presents(id, user_id, sent_at, item_type, item_id, amount, present_message, created_at, updated_at) VALUES "
         user_presents_sql_values = []
 
-        user_present_all_received_history_sql = "INSERT INTO user_present_all_received_history(id, user_id, present_all_id, received_at, created_at, updated_at) VALUES "
+        user_present_all_received_history_sql_prefix = "INSERT INTO user_present_all_received_history(id, user_id, present_all_id, received_at, created_at, updated_at) VALUES "
         user_present_all_received_history_sql_values = []
 
         normal_presents.each do |normal_present_|
@@ -373,11 +373,11 @@ module Isuconquest
 
         # 一括でINSERT
         unless bulk_insert_user_presents.empty?
-          db.xquery(user_presents_sql + user_presents_sql_values.join(", "), *bulk_insert_user_presents)
+          db.xquery(user_presents_sql_prefix + user_presents_sql_values.join(", "), *bulk_insert_user_presents)
         end
 
         unless bulk_insert_history.empty?
-          db.xquery(user_present_all_received_history_sql + user_present_all_received_history_sql_values.join(", "), *bulk_insert_history)
+          db.xquery(user_present_all_received_history_sql_prefix + user_present_all_received_history_sql_values.join(", "), *bulk_insert_history)
         end
 
         obtain_presents
