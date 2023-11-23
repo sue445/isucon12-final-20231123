@@ -508,7 +508,7 @@ module Isuconquest
         init_card = db.xquery(query, 2).first
         raise HttpError.new(404, 'not found item') unless init_card
 
-        init_cards = 3.times.map do
+        init_cards = Array.new(3) do
           card_id = generate_id()
           card = UserCard.new(
             id: card_id,
