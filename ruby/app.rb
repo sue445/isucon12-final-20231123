@@ -356,23 +356,25 @@ module Isuconquest
       end
 
       def generate_id
-        db = Thread.current[:generate_id_db] ||= connect_db
-        update_error = nil
-        100.times do
-          begin
-            db.query('UPDATE id_generator SET id=LAST_INSERT_ID(id+1)')
-          rescue Mysql2::Error => e
-            if e.error_number == 1213
-              update_error = e
-              next
-            end
-            raise e
-          end
+        # db = Thread.current[:generate_id_db] ||= connect_db
+        # update_error = nil
+        # 100.times do
+        #   begin
+        #     db.query('UPDATE id_generator SET id=LAST_INSERT_ID(id+1)')
+        #   rescue Mysql2::Error => e
+        #     if e.error_number == 1213
+        #       update_error = e
+        #       next
+        #     end
+        #     raise e
+        #   end
+        #
+        #   return db.last_id
+        # end
+        #
+        # raise "failed to generate id: #{update_error.inspect}"
 
-          return db.last_id
-        end
-
-        raise "failed to generate id: #{update_error.inspect}"
+        SecureRandom.random_number(2**63 - 1)
       end
 
       def generate_uuid
