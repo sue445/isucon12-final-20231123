@@ -315,11 +315,11 @@ module Isuconquest
         normal_presents = db.xquery('SELECT `id`, `registered_start_at`, `registered_end_at`, `item_type`, `item_id`, `amount`, `present_message`, `created_at` FROM present_all_masters WHERE registered_start_at <= ? AND registered_end_at >= ?', request_at, request_at)
 
         # プレゼントIDのリストを取得
-        present_ids = normal_presents.map(&:id)
+        present_ids = normal_presents.map { |present| present[:id] }
 
         # ユーザーが受け取ったプレゼントの履歴を一度に取得
         user_present_history = db.xquery('SELECT `user_id`, `present_all_id` FROM user_present_all_received_history WHERE user_id=? AND present_all_id IN (?)', user_id, present_ids)
-        received_present_ids = user_present_history.map { |history| history['present_all_id'] }
+        received_present_ids = user_present_history.map { |history| history[:present_all_id] }
 
         obtain_presents = []
 
@@ -334,7 +334,7 @@ module Isuconquest
 
         normal_presents.each do |normal_present_|
           # プレゼントが既に受け取られている場合はスキップ
-          next if received_present_ids.include?(normal_present_.id)
+          next if received_present_ids.include?(normal_present_[:id])
 
           normal_present = PresentAllMaster.new(normal_present_)
 
