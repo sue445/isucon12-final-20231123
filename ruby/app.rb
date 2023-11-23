@@ -21,7 +21,7 @@ require_relative "./config/sentry_methods"
 # require_relative "./config/mysql_methods"
 # require_relative "./config/oj_encoder"
 # require_relative "./config/oj_to_json_patch"
-# require_relative "./config/redis_methods"
+require_relative "./config/redis_methods"
 # require_relative "./config/sidekiq"
 # require_relative "./config/sidekiq_methods"
 
@@ -33,6 +33,7 @@ require_relative "./config/enable_monitoring"
 
 module Isuconquest
   include SentryMethods
+  include RedisMethods
   # using Mysql2::NestedHashBind::QueryExtension
 
   class HttpError < StandardError
@@ -450,6 +451,8 @@ module Isuconquest
       unless status.success?
         raise HttpError.new(500, "Failed to initialize: #{out}")
       end
+
+      initialize_redis
 
       json(
         language: 'ruby',
