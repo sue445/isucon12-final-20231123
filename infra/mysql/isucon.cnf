@@ -12,7 +12,7 @@ connect_timeout = 60
 
 # デフォルトが127.0.0.1なのを変える
 bind-address  = 0.0.0.0
-# mysqlx-bind-address = 0.0.0.0
+mysqlx-bind-address = 0.0.0.0
 
 innodb_file_per_table = ON
 
