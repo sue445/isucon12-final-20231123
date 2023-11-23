@@ -372,8 +372,13 @@ module Isuconquest
         end
 
         # 一括でINSERT
-        db.xquery(user_presents_sql + user_presents_sql_values.join(", "), *bulk_insert_user_presents)
-        db.xquery(user_present_all_received_history_sql + user_present_all_received_history_sql_values.join(", "), *bulk_insert_history)
+        unless bulk_insert_user_presents.empty?
+          db.xquery(user_presents_sql + user_presents_sql_values.join(", "), *bulk_insert_user_presents)
+        end
+
+        unless bulk_insert_history.empty?
+          db.xquery(user_present_all_received_history_sql + user_present_all_received_history_sql_values.join(", "), *bulk_insert_history)
+        end
 
         obtain_presents
       end
