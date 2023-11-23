@@ -90,7 +90,7 @@ module Isuconquest
       def db_transaction(&block)
         db.query('BEGIN')
         done = false
-        retval = block.call
+        retval = yield
 
         db.query('COMMIT')
         done = true
