@@ -80,13 +80,20 @@ module Isuconquest
 
       # admin_list_master マスタデータ閲覧
       app.get '/admin/master', admin_check_session: true do
-        master_versions = db.xquery('SELECT * FROM version_masters').to_a.map { VersionMaster.new(_1).as_json }
-        items = db.xquery('SELECT * FROM item_masters').to_a.map { ItemMaster.new(_1).as_json }
-        gachas = db.xquery('SELECT * FROM gacha_masters').to_a.map { GachaMaster.new(_1).as_json }
-        gacha_items = db.xquery('SELECT * FROM gacha_item_masters').to_a.map { GachaItemMaster.new(_1).as_json }
-        present_alls = db.xquery('SELECT * FROM present_all_masters').to_a.map { PresentAllMaster.new(_1).as_json }
-        login_bonuses = db.xquery('SELECT * FROM login_bonus_masters').to_a.map { LoginBonusMaster.new(_1).as_json }
-        login_bonus_rewards = db.xquery('SELECT * FROM login_bonus_reward_masters').to_a.map { LoginBonusRewardMaster.new(_1).as_json }
+        # TODO: Remove needless columns if necessary
+        master_versions = db.xquery('SELECT `id`, `status`, `master_version` FROM version_masters').to_a.map { VersionMaster.new(_1).as_json }
+        # TODO: Remove needless columns if necessary
+        items = db.xquery('SELECT `id`, `item_type`, `name`, `description`, `amount_per_sec`, `max_level`, `max_amount_per_sec`, `base_exp_per_level`, `gained_exp`, `shortening_min` FROM item_masters').to_a.map { ItemMaster.new(_1).as_json }
+        # TODO: Remove needless columns if necessary
+        gachas = db.xquery('SELECT `id`, `name`, `start_at`, `end_at`, `display_order`, `created_at` FROM gacha_masters').to_a.map { GachaMaster.new(_1).as_json }
+        # TODO: Remove needless columns if necessary
+        gacha_items = db.xquery('SELECT `id`, `gacha_id`, `item_type`, `item_id`, `amount`, `weight`, `created_at` FROM gacha_item_masters').to_a.map { GachaItemMaster.new(_1).as_json }
+        # TODO: Remove needless columns if necessary
+        present_alls = db.xquery('SELECT `id`, `registered_start_at`, `registered_end_at`, `item_type`, `item_id`, `amount`, `present_message`, `created_at` FROM present_all_masters').to_a.map { PresentAllMaster.new(_1).as_json }
+        # TODO: Remove needless columns if necessary
+        login_bonuses = db.xquery('SELECT `id`, `start_at`, `end_at`, `column_count`, `looped`, `created_at` FROM login_bonus_masters').to_a.map { LoginBonusMaster.new(_1).as_json }
+        # TODO: Remove needless columns if necessary
+        login_bonus_rewards = db.xquery('SELECT `id`, `login_bonus_id`, `reward_sequence`, `item_type`, `item_id`, `amount`, `created_at` FROM login_bonus_reward_masters').to_a.map { LoginBonusRewardMaster.new(_1).as_json }
 
         json(
           versionMaster: master_versions,
@@ -183,7 +190,8 @@ module Isuconquest
             db.xquery(query, *login_bonus_reward_recs.flatten)
           end
 
-          active_master = db.query('SELECT * FROM version_masters WHERE status=1').first&.then { VersionMaster.new(_1) }
+          # TODO: Remove needless columns if necessary
+          active_master = db.query('SELECT `id`, `status`, `master_version` FROM version_masters WHERE status=1').first&.then { VersionMaster.new(_1) }
           raise HttpError.new(500, 'invalid active_master') unless active_master
           json(
             versionMaster: active_master.as_json,

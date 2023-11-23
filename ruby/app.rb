@@ -100,7 +100,8 @@ module Isuconquest
       end
 
       def check_one_time_token!(token, token_type, request_at)
-        tk = db.xquery('SELECT * FROM user_one_time_tokens WHERE token=? AND token_type=? AND deleted_at IS NULL', token, token_type).first
+        # TODO: Remove needless columns if necessary
+        tk = db.xquery('SELECT `id`, `user_id`, `token`, `token_type`, `created_at`, `updated_at`, `expired_at`, `deleted_at` FROM user_one_time_tokens WHERE token=? AND token_type=? AND deleted_at IS NULL', token, token_type).first
         raise HttpError.new(400, 'invalid token') unless tk
 
         if tk.fetch(:expired_at) < request_at
@@ -113,12 +114,14 @@ module Isuconquest
       end
 
       def check_viewer_id!(user_id, viewer_id)
-        device = db.xquery('SELECT * FROM user_devices WHERE user_id=? AND platform_id=?', user_id, viewer_id).first
+        # TODO: Remove needless columns if necessary
+        device = db.xquery('SELECT `id`, `user_id`, `platform_id`, `platform_type`, `created_at`, `updated_at`, `deleted_at` FROM user_devices WHERE user_id=? AND platform_id=?', user_id, viewer_id).first
         raise HttpError.new(404, 'not found user device') unless device
       end
 
       def check_ban?(user_id)
-        ban_user = db.xquery('SELECT * FROM user_bans WHERE user_id=?', user_id).first
+        # TODO: Remove needless columns if necessary
+        ban_user = db.xquery('SELECT `id`, `user_id`, `created_at`, `updated_at`, `deleted_at` FROM user_bans WHERE user_id=?', user_id).first
         return false unless ban_user
         true
       end
@@ -131,7 +134,8 @@ module Isuconquest
 
       # ログイン処理
       def login_process(user_id, request_at)
-        user = db.xquery('SELECT * FROM users WHERE id=?', user_id).first&.then { User.new(_1) }
+        # TODO: Remove needless columns if necessary
+        user = db.xquery('SELECT `id`, `isu_coin`, `last_getreward_at`, `last_activated_at`, `registered_at`, `created_at`, `updated_at`, `deleted_at` FROM users WHERE id=?', user_id).first&.then { User.new(_1) }
         raise HttpError.new(404, 'not found user') unless user
 
         # ログインボーナス処理
@@ -163,14 +167,16 @@ module Isuconquest
 
       def obtain_login_bonus(user_id, request_at)
         # login bonus masterから有効なログインボーナスを取得
-        login_bonuses = db.xquery('SELECT * FROM login_bonus_masters WHERE start_at <= ? AND end_at >= ?', request_at, request_at)
+        # TODO: Remove needless columns if necessary
+        login_bonuses = db.xquery('SELECT `id`, `start_at`, `end_at`, `column_count`, `looped`, `created_at` FROM login_bonus_masters WHERE start_at <= ? AND end_at >= ?', request_at, request_at)
 
         send_login_bonuses = []
 
         login_bonuses.each do |bonus|
           init_bonus = false
           # ボーナスの進捗取得
-          user_bonus = db.xquery('SELECT * FROM user_login_bonuses WHERE user_id=? AND login_bonus_id=?', user_id, bonus.fetch(:id)).first&.then { UserLoginBonus.new(_1) } # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+          # TODO: Remove needless columns if necessary
+          user_bonus = db.xquery('SELECT `id`, `user_id`, `login_bonus_id`, `last_reward_sequence`, `loop_count`, `created_at`, `updated_at`, `deleted_at` FROM user_login_bonuses WHERE user_id=? AND login_bonus_id=?', user_id, bonus.fetch(:id)).first&.then { UserLoginBonus.new(_1) } # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
           unless user_bonus
             init_bonus = true
 
@@ -201,7 +207,8 @@ module Isuconquest
           user_bonus.updated_at = request_at
 
           # 今回付与するリソース取得
-          reward_item = db.xquery('SELECT * FROM login_bonus_reward_masters WHERE login_bonus_id=? AND reward_sequence=?', bonus.fetch(:id), user_bonus.last_reward_sequence).first # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+          # TODO: Remove needless columns if necessary
+          reward_item = db.xquery('SELECT `id`, `login_bonus_id`, `reward_sequence`, `item_type`, `item_id`, `amount`, `created_at` FROM login_bonus_reward_masters WHERE login_bonus_id=? AND reward_sequence=?', bonus.fetch(:id), user_bonus.last_reward_sequence).first # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
           raise HttpError.new(404, 'not found login bonus reward') unless reward_item
 
           obtain_item(user_id, reward_item.fetch(:item_id), reward_item.fetch(:item_type), reward_item.fetch(:amount), request_at)
@@ -221,12 +228,14 @@ module Isuconquest
 
       # プレゼント付与処理
       def obtain_present(user_id, request_at)
-        normal_presents = db.xquery('SELECT * FROM present_all_masters WHERE registered_start_at <= ? AND registered_end_at >= ?', request_at, request_at)
+        # TODO: Remove needless columns if necessary
+        normal_presents = db.xquery('SELECT `id`, `registered_start_at`, `registered_end_at`, `item_type`, `item_id`, `amount`, `present_message`, `created_at` FROM present_all_masters WHERE registered_start_at <= ? AND registered_end_at >= ?', request_at, request_at)
         obtain_presents = []
         normal_presents.each do |normal_present_|
           normal_present = PresentAllMaster.new(normal_present_)
 
-          user_present_all_received_history = db.xquery('SELECT * FROM user_present_all_received_history WHERE user_id=? AND present_all_id=?', user_id, normal_present.id).first # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+          # TODO: Remove needless columns if necessary
+          user_present_all_received_history = db.xquery('SELECT `id`, `user_id`, `present_all_id`, `received_at`, `created_at`, `updated_at`, `deleted_at` FROM user_present_all_received_history WHERE user_id=? AND present_all_id=?', user_id, normal_present.id).first # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
           next if user_present_all_received_history # プレゼント配布済
 
           # user present boxに入れる
@@ -281,7 +290,8 @@ module Isuconquest
 
         case item_type
         when 1 # coin
-          user = db.xquery('SELECT * FROM users WHERE id=?', user_id).first
+          # TODO: Remove needless columns if necessary
+          user = db.xquery('SELECT `id`, `isu_coin`, `last_getreward_at`, `last_activated_at`, `registered_at`, `created_at`, `updated_at`, `deleted_at` FROM users WHERE id=?', user_id).first
           raise HttpError.new(404, 'not found user') unless user
 
           total_coin = user.fetch(:isu_coin) + obtain_amount
@@ -290,7 +300,8 @@ module Isuconquest
           obtain_coins.push(obtain_amount)
 
         when 2 # card(ハンマー)
-          item = db.xquery('SELECT * FROM item_masters WHERE id=? AND item_type=?', item_id, item_type).first
+          # TODO: Remove needless columns if necessary
+          item = db.xquery('SELECT `id`, `item_type`, `name`, `description`, `amount_per_sec`, `max_level`, `max_amount_per_sec`, `base_exp_per_level`, `gained_exp`, `shortening_min` FROM item_masters WHERE id=? AND item_type=?', item_id, item_type).first
           raise HttpError.new(404, 'not found item') unless item
 
           user_card_id = generate_id()
@@ -309,11 +320,13 @@ module Isuconquest
           obtain_cards.push(card)
 
         when 3, 4 # 強化素材
-          item = db.xquery('SELECT * FROM item_masters WHERE id=? AND item_type=?', item_id, item_type).first
+          # TODO: Remove needless columns if necessary
+          item = db.xquery('SELECT `id`, `item_type`, `name`, `description`, `amount_per_sec`, `max_level`, `max_amount_per_sec`, `base_exp_per_level`, `gained_exp`, `shortening_min` FROM item_masters WHERE id=? AND item_type=?', item_id, item_type).first
           raise HttpError.new(404, 'not found item') unless item
 
           # 所持数取得
-          user_item = db.xquery('SELECT * FROM user_items WHERE user_id=? AND item_id=?', user_id, item.fetch(:id)).first&.then { UserItem.new(_1) }
+          # TODO: Remove needless columns if necessary
+          user_item = db.xquery('SELECT `id`, `user_id`, `item_type`, `item_id`, `amount`, `created_at`, `updated_at`, `deleted_at` FROM user_items WHERE user_id=? AND item_id=?', user_id, item.fetch(:id)).first&.then { UserItem.new(_1) }
           if user_item.nil? # 新規作成
             user_item_id = generate_id()
             user_item = UserItem.new(
@@ -386,7 +399,8 @@ module Isuconquest
       end || Time.now).to_i
 
       # マスタ確認
-      master_version = db.query('SELECT * FROM version_masters WHERE status=1').first
+      # TODO: Remove needless columns if necessary
+      master_version = db.query('SELECT `id`, `status`, `master_version` FROM version_masters WHERE status=1').first
       unless master_version
         raise HttpError.new(404, 'active master version is not found')
       end
@@ -414,7 +428,8 @@ module Isuconquest
 
         request_at = get_request_time()
 
-        user_session = db.xquery('SELECT * FROM user_sessions WHERE session_id=? AND deleted_at IS NULL', sess_id).first
+        # TODO: Remove needless columns if necessary
+        user_session = db.xquery('SELECT `id`, `user_id`, `session_id`, `created_at`, `updated_at`, `expired_at`, `deleted_at` FROM user_sessions WHERE session_id=? AND deleted_at IS NULL', sess_id).first
         raise HttpError.new(401, 'unauthorized user') if user_session.nil?
 
         if user_session.fetch(:user_id) != user_id
@@ -480,7 +495,8 @@ module Isuconquest
         db.xquery('INSERT INTO user_devices(id, user_id, platform_id, platform_type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)', user_device.id, user.id, json_params.fetch(:viewerId), json_params.fetch(:platformType), request_at, request_at)
 
         # 初期デッキ付与
-        init_card = db.xquery('SELECT * FROM item_masters WHERE id=?', 2).first
+        # TODO: Remove needless columns if necessary
+        init_card = db.xquery('SELECT `id`, `item_type`, `name`, `description`, `amount_per_sec`, `max_level`, `max_amount_per_sec`, `base_exp_per_level`, `gained_exp`, `shortening_min` FROM item_masters WHERE id=?', 2).first
         raise HttpError.new(404, 'not found item') unless init_card
 
         init_cards = Array.new(3) do
@@ -542,7 +558,8 @@ module Isuconquest
     post '/login' do
       request_at = get_request_time()
 
-      user = db.xquery('SELECT * FROM users WHERE id=?', json_params[:userId]).first&.then { User.new(_1) }
+      # TODO: Remove needless columns if necessary
+      user = db.xquery('SELECT `id`, `isu_coin`, `last_getreward_at`, `last_activated_at`, `registered_at`, `created_at`, `updated_at`, `deleted_at` FROM users WHERE id=?', json_params[:userId]).first&.then { User.new(_1) }
       raise HttpError.new(404, 'not found user') unless user
 
       # check ban
@@ -598,7 +615,8 @@ module Isuconquest
       user_id = get_user_id()
       request_at = get_request_time()
 
-      gacha_master_list = db.xquery('SELECT * FROM gacha_masters WHERE start_at <= ? AND end_at >= ? ORDER BY display_order ASC', request_at, request_at).to_a
+      # TODO: Remove needless columns if necessary
+      gacha_master_list = db.xquery('SELECT `id`, `name`, `start_at`, `end_at`, `display_order`, `created_at` FROM gacha_masters WHERE start_at <= ? AND end_at >= ? ORDER BY display_order ASC', request_at, request_at).to_a
 
       if gacha_master_list.empty?
         next json(
@@ -610,7 +628,8 @@ module Isuconquest
       # ガチャ排出アイテム取得
       gacha_data_list = []
       gacha_master_list.each do |v|
-        gacha_item = db.xquery('SELECT * FROM gacha_item_masters WHERE gacha_id=? ORDER BY id ASC', v.fetch(:id)).to_a # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+        # TODO: Remove needless columns if necessary
+        gacha_item = db.xquery('SELECT `id`, `gacha_id`, `item_type`, `item_id`, `amount`, `weight`, `created_at` FROM gacha_item_masters WHERE gacha_id=? ORDER BY id ASC', v.fetch(:id)).to_a # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
         raise HttpError.new(404, 'not found gacha item') if gacha_item.empty?
 
         gacha_data_list.push(
@@ -663,16 +682,19 @@ module Isuconquest
       consumed_coin = gacha_count * 1000
 
       # userのisuconが足りるか
-      user = db.xquery('SELECT * FROM users WHERE id=?', user_id).first
+      # TODO: Remove needless columns if necessary
+      user = db.xquery('SELECT `id`, `isu_coin`, `last_getreward_at`, `last_activated_at`, `registered_at`, `created_at`, `updated_at`, `deleted_at` FROM users WHERE id=?', user_id).first
       raise HttpError.new(404, 'not found user') unless user
       raise HttpError.new(409, 'not enough isucon') if user.fetch(:isu_coin) < consumed_coin
 
       # gachaIDからガチャマスタの取得
-      gacha_info = db.xquery('SELECT * FROM gacha_masters WHERE id=? AND start_at <= ? AND end_at >= ?', gacha_id, request_at, request_at).first
+      # TODO: Remove needless columns if necessary
+      gacha_info = db.xquery('SELECT `id`, `name`, `start_at`, `end_at`, `display_order`, `created_at` FROM gacha_masters WHERE id=? AND start_at <= ? AND end_at >= ?', gacha_id, request_at, request_at).first
       raise HttpError.new(404, 'not found gacha') unless gacha_info
 
       # gachaItemMasterからアイテムリスト取得
-      gacha_item_list = db.xquery('SELECT * FROM gacha_item_masters WHERE gacha_id=? ORDER BY id ASC', gacha_id).to_a
+      # TODO: Remove needless columns if necessary
+      gacha_item_list = db.xquery('SELECT `id`, `gacha_id`, `item_type`, `item_id`, `amount`, `weight`, `created_at` FROM gacha_item_masters WHERE gacha_id=? ORDER BY id ASC', gacha_id).to_a
       raise HttpError.new(404, 'not found gacha item') if gacha_item_list.empty?
 
       # weightの合計値を算出
@@ -772,7 +794,8 @@ module Isuconquest
       check_viewer_id!(user_id, json_params[:viewerId])
 
       # user_presentsに入っているが未取得のプレゼント取得
-      obtain_present = db.xquery('SELECT * FROM user_presents WHERE id IN (?) AND deleted_at IS NULL', json_params[:presentIds]).map { UserPresent.new(_1) }
+      # TODO: Remove needless columns if necessary
+      obtain_present = db.xquery('SELECT `id`, `user_id`, `sent_at`, `item_type`, `item_id`, `amount`, `present_message`, `created_at`, `updated_at`, `deleted_at` FROM user_presents WHERE id IN (?) AND deleted_at IS NULL', json_params[:presentIds]).map { UserPresent.new(_1) }
       
       if obtain_present.empty?
         next json(
@@ -804,11 +827,14 @@ module Isuconquest
 
       request_at = get_request_time()
 
-      raise HttpError.new(404, 'not found user') unless db.xquery('SELECT * FROM users WHERE id=?', user_id).first
+      # TODO: Remove needless columns if necessary
+      raise HttpError.new(404, 'not found user') unless db.xquery('SELECT `id`, `isu_coin`, `last_getreward_at`, `last_activated_at`, `registered_at`, `created_at`, `updated_at`, `deleted_at` FROM users WHERE id=?', user_id).first
 
-      item_list = db.xquery('SELECT * FROM user_items WHERE user_id = ?', user_id).to_a
+      # TODO: Remove needless columns if necessary
+      item_list = db.xquery('SELECT `id`, `user_id`, `item_type`, `item_id`, `amount`, `created_at`, `updated_at`, `deleted_at` FROM user_items WHERE user_id = ?', user_id).to_a
 
-      card_list = db.xquery('SELECT * FROM user_cards WHERE user_id=?', user_id).to_a
+      # TODO: Remove needless columns if necessary
+      card_list = db.xquery('SELECT `id`, `user_id`, `card_id`, `amount_per_sec`, `level`, `total_exp`, `created_at`, `updated_at`, `deleted_at` FROM user_cards WHERE user_id=?', user_id).to_a
 
       # generate one time token
       db.xquery('UPDATE user_one_time_tokens SET deleted_at=? WHERE user_id=? AND deleted_at IS NULL', request_at, user_id)
@@ -940,7 +966,8 @@ module Isuconquest
         end
 
         # get response data
-        result_card = db.xquery('SELECT * FROM user_cards WHERE id=?', card.id).first&.then { UserCard.new(_1) }
+        # TODO: Remove needless columns if necessary
+        result_card = db.xquery('SELECT `id`, `user_id`, `card_id`, `amount_per_sec`, `level`, `total_exp`, `created_at`, `updated_at`, `deleted_at` FROM user_cards WHERE id=?', card.id).first&.then { UserCard.new(_1) }
         raise HttpError.new(404, 'not found card') unless result_card
         result_items = items.map do |v|
           UserItem.new(
@@ -973,7 +1000,8 @@ module Isuconquest
       check_viewer_id!(user_id, json_params[:viewerId])
 
       # カード所持情報のバリデーション
-      cards = db.xquery('SELECT * FROM user_cards WHERE id IN (?)', json_params.fetch(:cardIds)).to_a
+      # TODO: Remove needless columns if necessary
+      cards = db.xquery('SELECT `id`, `user_id`, `card_id`, `amount_per_sec`, `level`, `total_exp`, `created_at`, `updated_at`, `deleted_at` FROM user_cards WHERE id IN (?)', json_params.fetch(:cardIds)).to_a
       raise HttpError.new(400, 'invalid card ids') if cards.size != DECK_CARD_NUMBER
 
       db_transaction do
@@ -1007,14 +1035,17 @@ module Isuconquest
       check_viewer_id!(user_id, json_params[:viewerId])
 
       # 最後に取得した報酬時刻取得
-      user = db.xquery('SELECT * FROM users WHERE id=?', user_id).first&.then { User.new(_1) }
+      # TODO: Remove needless columns if necessary
+      user = db.xquery('SELECT `id`, `isu_coin`, `last_getreward_at`, `last_activated_at`, `registered_at`, `created_at`, `updated_at`, `deleted_at` FROM users WHERE id=?', user_id).first&.then { User.new(_1) }
       raise HttpError.new(404, 'not found user') unless user
 
       # 使っているデッキの取得
-      deck = db.xquery('SELECT * FROM user_decks WHERE user_id=? AND deleted_at IS NULL', user_id).first
+      # TODO: Remove needless columns if necessary
+      deck = db.xquery('SELECT `id`, `user_id`, `user_card_id_1`, `user_card_id_2`, `user_card_id_3`, `created_at`, `updated_at`, `deleted_at` FROM user_decks WHERE user_id=? AND deleted_at IS NULL', user_id).first
       raise HttpError.new(404, '') unless deck
 
-      cards = db.xquery('SELECT * FROM user_cards WHERE id IN (?, ?, ?)', deck.fetch(:user_card_id_1), deck.fetch(:user_card_id_2), deck.fetch(:user_card_id_3)).to_a
+      # TODO: Remove needless columns if necessary
+      cards = db.xquery('SELECT `id`, `user_id`, `card_id`, `amount_per_sec`, `level`, `total_exp`, `created_at`, `updated_at`, `deleted_at` FROM user_cards WHERE id IN (?, ?, ?)', deck.fetch(:user_card_id_1), deck.fetch(:user_card_id_2), deck.fetch(:user_card_id_3)).to_a
       raise HttpError.new(400, 'invalid card length') if cards.size != 3
 
       # 経過時間*生産性のcoin (1椅子 = 1coin)
@@ -1038,18 +1069,21 @@ module Isuconquest
       request_at = get_request_time()
 
       # 装備情報
-      deck = db.xquery('SELECT * FROM user_decks WHERE user_id=? AND deleted_at IS NULL', user_id).first&.then { UserDeck.new(_1) }
+      # TODO: Remove needless columns if necessary
+      deck = db.xquery('SELECT `id`, `user_id`, `user_card_id_1`, `user_card_id_2`, `user_card_id_3`, `created_at`, `updated_at`, `deleted_at` FROM user_decks WHERE user_id=? AND deleted_at IS NULL', user_id).first&.then { UserDeck.new(_1) }
 
       # 生産性
       cards = []
       if deck
         card_ids = [deck.user_card_id_1, deck.user_card_id_2, deck.user_card_id_3]
-        cards = db.xquery('SELECT * FROM user_cards WHERE id IN (?)', card_ids).map { UserCard.new(_1) }
+        # TODO: Remove needless columns if necessary
+        cards = db.xquery('SELECT `id`, `user_id`, `card_id`, `amount_per_sec`, `level`, `total_exp`, `created_at`, `updated_at`, `deleted_at` FROM user_cards WHERE id IN (?)', card_ids).map { UserCard.new(_1) }
       end
       total_amount_per_sec = cards.sum(&:amount_per_sec)
 
       # 経過時間
-      user = db.xquery('SELECT * FROM users WHERE id=?', user_id).first&.then { User.new(_1) }
+      # TODO: Remove needless columns if necessary
+      user = db.xquery('SELECT `id`, `isu_coin`, `last_getreward_at`, `last_activated_at`, `registered_at`, `created_at`, `updated_at`, `deleted_at` FROM users WHERE id=?', user_id).first&.then { User.new(_1) }
       raise HttpError.new(404, 'not found user') unless user
       past_time = request_at - user.last_getreward_at
 
