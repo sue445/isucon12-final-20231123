@@ -33,7 +33,7 @@ APP_SERVICE_NAME = "isuconquest.ruby.service"
 
 # デプロイを記録するissue
 GITHUB_REPO     = "sue445/isucon12-final-20231123"
-GITHUB_ISSUE_ID = 1
+GITHUB_ISSUE_ID = 23
 
 RUBY_VERSION_PATH = "#{__dir__}/ruby/.ruby-version"
 
