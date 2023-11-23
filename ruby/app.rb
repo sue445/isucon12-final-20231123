@@ -255,18 +255,89 @@ module Isuconquest
       end
 
       # プレゼント付与処理
+      # def obtain_present(user_id, request_at)
+      #   # TODO: Remove needless columns if necessary
+      #   normal_presents = db.xquery('SELECT `id`, `registered_start_at`, `registered_end_at`, `item_type`, `item_id`, `amount`, `present_message`, `created_at` FROM present_all_masters WHERE registered_start_at <= ? AND registered_end_at >= ?', request_at, request_at)
+      #   obtain_presents = []
+      #   normal_presents.each do |normal_present_|
+      #     normal_present = PresentAllMaster.new(normal_present_)
+      #
+      #     # TODO: Remove needless columns if necessary
+      #     user_present_all_received_history = db.xquery('SELECT `id`, `user_id`, `present_all_id`, `received_at`, `created_at`, `updated_at`, `deleted_at` FROM user_present_all_received_history WHERE user_id=? AND present_all_id=?', user_id, normal_present.id).first # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+      #     next if user_present_all_received_history # プレゼント配布済
+      #
+      #     # user present boxに入れる
+      #     user_present_id = generate_id()
+      #     user_present = UserPresent.new(
+      #       id: user_present_id,
+      #       user_id: user_id,
+      #       sent_at: request_at,
+      #       item_type: normal_present.item_type,
+      #       item_id: normal_present.item_id,
+      #       amount: normal_present.amount,
+      #       present_message: normal_present.present_message,
+      #       created_at: request_at,
+      #       updated_at: request_at,
+      #     )
+      #     db.xquery('INSERT INTO user_presents(id, user_id, sent_at, item_type, item_id, amount, present_message, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', user_present.id, user_present.user_id, user_present.sent_at, user_present.item_type, user_present.item_id, user_present.amount, user_present.present_message, user_present.created_at, user_present.updated_at) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+      #
+      #     # historyに入れる
+      #     present_history_id = generate_id()
+      #     history = UserPresentAllReceivedHistory.new(
+      #       id: present_history_id,
+      #       user_id: user_id,
+      #       present_all_id: normal_present.id,
+      #       received_at: request_at,
+      #       created_at: request_at,
+      #       updated_at: request_at,
+      #     )
+      #
+      #     # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+      #     db.xquery(
+      #       'INSERT INTO user_present_all_received_history(id, user_id, present_all_id, received_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      #       history.id,
+      #       history.user_id,
+      #       history.present_all_id,
+      #       history.received_at,
+      #       history.created_at,
+      #       history.updated_at,
+      #     )
+      #     # rubocop:enable Isucon/Mysql2/NPlusOneQuery
+      #
+      #     obtain_presents.push(user_present)
+      #   end
+      #
+      #   obtain_presents
+      # end
+
+      # プレゼント付与処理
       def obtain_present(user_id, request_at)
-        # TODO: Remove needless columns if necessary
         normal_presents = db.xquery('SELECT `id`, `registered_start_at`, `registered_end_at`, `item_type`, `item_id`, `amount`, `present_message`, `created_at` FROM present_all_masters WHERE registered_start_at <= ? AND registered_end_at >= ?', request_at, request_at)
+
+        # プレゼントIDのリストを取得
+        present_ids = normal_presents.map(&:id)
+
+        # ユーザーが受け取ったプレゼントの履歴を一度に取得
+        user_present_history = db.xquery('SELECT `user_id`, `present_all_id` FROM user_present_all_received_history WHERE user_id=? AND present_all_id IN (?)', user_id, present_ids)
+        received_present_ids = user_present_history.map { |history| history['present_all_id'] }
+
         obtain_presents = []
+
+        bulk_insert_user_presents = []
+        bulk_insert_history = []
+
+        user_presents_sql = "INSERT INTO user_presents(id, user_id, sent_at, item_type, item_id, amount, present_message, created_at, updated_at) VALUES "
+        user_presents_sql_values = []
+
+        user_present_all_received_history_sql = "INSERT INTO user_present_all_received_history(id, user_id, present_all_id, received_at, created_at, updated_at) VALUES "
+        user_present_all_received_history_sql_values = []
+
         normal_presents.each do |normal_present_|
+          # プレゼントが既に受け取られている場合はスキップ
+          next if received_present_ids.include?(normal_present_.id)
+
           normal_present = PresentAllMaster.new(normal_present_)
 
-          # TODO: Remove needless columns if necessary
-          user_present_all_received_history = db.xquery('SELECT `id`, `user_id`, `present_all_id`, `received_at`, `created_at`, `updated_at`, `deleted_at` FROM user_present_all_received_history WHERE user_id=? AND present_all_id=?', user_id, normal_present.id).first # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
-          next if user_present_all_received_history # プレゼント配布済
-
-          # user present boxに入れる
           user_present_id = generate_id()
           user_present = UserPresent.new(
             id: user_present_id,
@@ -279,7 +350,9 @@ module Isuconquest
             created_at: request_at,
             updated_at: request_at,
           )
-          db.xquery('INSERT INTO user_presents(id, user_id, sent_at, item_type, item_id, amount, present_message, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', user_present.id, user_present.user_id, user_present.sent_at, user_present.item_type, user_present.item_id, user_present.amount, user_present.present_message, user_present.created_at, user_present.updated_at) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+
+          bulk_insert_user_presents << [user_present.id, user_present.user_id, user_present.sent_at, user_present.item_type, user_present.item_id, user_present.amount, user_present.present_message, user_present.created_at, user_present.updated_at]
+          user_presents_sql_values << "(?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
           # historyに入れる
           present_history_id = generate_id()
@@ -292,20 +365,15 @@ module Isuconquest
             updated_at: request_at,
           )
 
-          # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
-          db.xquery(
-            'INSERT INTO user_present_all_received_history(id, user_id, present_all_id, received_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-            history.id,
-            history.user_id,
-            history.present_all_id,
-            history.received_at,
-            history.created_at,
-            history.updated_at,
-          )
-          # rubocop:enable Isucon/Mysql2/NPlusOneQuery
+          bulk_insert_history << [history.id, history.user_id, history.present_all_id, history.received_at, history.created_at, history.updated_at]
+          user_present_all_received_history_sql_values << "(?, ?, ?, ?, ?, ?)"
 
           obtain_presents.push(user_present)
         end
+
+        # 一括でINSERT
+        db.xquery(user_presents_sql + user_presents_sql_values.join(", "), *bulk_insert_user_presents)
+        db.xquery(user_present_all_received_history_sql + user_present_all_received_history_sql_values.join(", "), *bulk_insert_history)
 
         obtain_presents
       end
