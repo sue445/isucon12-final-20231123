@@ -1,27 +1,111 @@
 GEM
   remote: https://rubygems.org/
   specs:
+    activemodel (7.1.2)
+      activesupport (= 7.1.2)
+    activerecord (7.1.2)
+      activemodel (= 7.1.2)
+      activesupport (= 7.1.2)
+      timeout (>= 0.4.0)
+    activesupport (7.1.2)
+      base64
+      bigdecimal
+      concurrent-ruby (~> 1.0, >= 1.0.2)
+      connection_pool (>= 2.2.5)
+      drb
+      i18n (>= 1.6, < 2)
+      minitest (>= 5.1)
+      mutex_m
+      tzinfo (~> 2.0)
+    ast (2.4.2)
+    base64 (0.2.0)
     bcrypt (3.1.18)
+    bigdecimal (3.1.5)
+    concurrent-ruby (1.2.2)
+    connection_pool (2.4.1)
+    datadog-ci (0.3.0)
+      msgpack
+    datadog_thread_tracer (0.1.1)
+      ddtrace (>= 1.0.0)
+    ddtrace (1.16.2)
+      datadog-ci (~> 0.3.0)
+      debase-ruby_core_source (= 3.2.2)
+      libdatadog (~> 5.0.0.1.0)
+      libddwaf (~> 1.14.0.0.0)
+      msgpack
+    debase-ruby_core_source (3.2.2)
+    drb (2.2.0)
+      ruby2_keywords
+    ffi (1.16.3)
+    gda (1.1.4)
+    i18n (1.14.1)
+      concurrent-ruby (~> 1.0)
     io-console (0.5.11)
     irb (1.4.1)
       reline (>= 0.3.0)
+    json (2.6.3)
+    language_server-protocol (3.17.0.3)
+    libdatadog (5.0.0.1.0)
+    libddwaf (1.14.0.0.0)
+      ffi (~> 1.0)
+    minitest (5.20.0)
+    msgpack (1.7.2)
     multi_json (1.15.0)
     mustermann (2.0.2)
       ruby2_keywords (~> 0.0.1)
+    mutex_m (0.2.0)
     mysql2 (0.5.4)
     mysql2-cs-bind (0.1.1)
       mysql2
+    mysql2-nested_hash_bind (0.1.0)
+      mysql2
+      mysql2-cs-bind
     nio4r (2.5.8)
+    oj (3.16.1)
+    parallel (1.23.0)
+    parser (3.2.2.4)
+      ast (~> 2.4.1)
+      racc
     puma (5.6.4)
       nio4r (~> 2.0)
+    racc (1.7.3)
     rack (2.2.4)
     rack-cors (1.1.1)
       rack (>= 2.0.0)
     rack-protection (2.2.2)
       rack
+    rainbow (3.1.1)
+    regexp_parser (2.8.2)
     reline (0.3.1)
       io-console (~> 0.5)
+    rexml (3.2.6)
+    rubocop (1.57.2)
+      json (~> 2.3)
+      language_server-protocol (>= 3.17.0)
+      parallel (~> 1.10)
+      parser (>= 3.2.2.4)
+      rainbow (>= 2.2.2, < 4.0)
+      regexp_parser (>= 1.8, < 3.0)
+      rexml (>= 3.2.5, < 4.0)
+      rubocop-ast (>= 1.28.1, < 2.0)
+      ruby-progressbar (~> 1.7)
+      unicode-display_width (>= 2.4.0, < 3.0)
+    rubocop-ast (1.30.0)
+      parser (>= 3.2.1.0)
+    rubocop-isucon (1.0.0)
+      activerecord (>= 6.1.0)
+      gda (!= 1.1.2)
+      rubocop (>= 1.49.0)
+      rubocop-performance
+    rubocop-performance (1.19.1)
+      rubocop (>= 1.7.0, < 2.0)
+      rubocop-ast (>= 0.4.0)
+    rubocop_auto_corrector (0.4.4)
+      rubocop (>= 1.3.0)
+    ruby-progressbar (1.13.0)
     ruby2_keywords (0.0.5)
+    sentry-ruby (5.13.0)
+      concurrent-ruby (~> 1.0, >= 1.0.2)
     sinatra (2.2.2)
       mustermann (~> 2.0)
       rack (~> 2.2)
@@ -34,17 +118,29 @@ GEM
       sinatra (= 2.2.2)
       tilt (~> 2.0)
     tilt (2.0.11)
+    timeout (0.4.1)
+    tzinfo (2.0.6)
+      concurrent-ruby (~> 1.0)
+    unicode-display_width (2.5.0)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
   bcrypt
+  datadog_thread_tracer
+  ddtrace (>= 1.0.0)
   irb
   mysql2
   mysql2-cs-bind
+  mysql2-nested_hash_bind
+  oj
+  parallel
   puma
   rack-cors
+  rubocop-isucon
+  rubocop_auto_corrector
+  sentry-ruby
   sinatra
   sinatra-contrib
 
