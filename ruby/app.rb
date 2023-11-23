@@ -55,7 +55,7 @@ module Isuconquest
 
     error HttpError do
       e = env['sinatra.error']
-      logger.error("status=#{e.code}, err=#{e.inspect}")
+      
       content_type :json
       status e.code
       JSON.dump(status_code: e.code, message: e.message)
