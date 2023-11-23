@@ -432,7 +432,9 @@ module Isuconquest
         request_at = get_request_time()
 
         # TODO: Remove needless columns if necessary
-        user_session = db.xquery('SELECT `id`, `user_id`, `session_id`, `created_at`, `updated_at`, `expired_at`, `deleted_at` FROM user_sessions WHERE session_id=? AND deleted_at IS NULL', sess_id).first
+        # user_session = db.xquery('SELECT `id`, `user_id`, `session_id`, `created_at`, `updated_at`, `expired_at`, `deleted_at` FROM user_sessions WHERE session_id=? AND deleted_at IS NULL', sess_id).first
+        user_session = get_user_session(user_id: user_id, session_id: sess_id, only_active: true)
+
         raise HttpError.new(401, 'unauthorized user') if user_session.nil?
 
         if user_session.fetch(:user_id) != user_id
@@ -440,7 +442,9 @@ module Isuconquest
         end
 
         if user_session.fetch(:expired_at) < request_at
-          db.xquery('UPDATE user_sessions SET deleted_at=? WHERE session_id=?', request_at, sess_id)
+          # db.xquery('UPDATE user_sessions SET deleted_at=? WHERE session_id=?', request_at, sess_id)
+          update_user_sessions_deleted_at(user_id: user_session.fetch(:user_id), session_id: sess_id, deleted_at: request_at)
+
           raise HttpError.new(401, 'session expired')
         end
       end
@@ -547,7 +551,9 @@ module Isuconquest
           updated_at: request_at,
           expired_at: request_at + 86400,
         )
-        db.xquery('INSERT INTO user_sessions(id, user_id, session_id, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?, ?)', sess.id, sess.user_id, sess.session_id, sess.created_at, sess.updated_at, sess.expired_at)
+
+        # db.xquery('INSERT INTO user_sessions(id, user_id, session_id, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?, ?)', sess.id, sess.user_id, sess.session_id, sess.created_at, sess.updated_at, sess.expired_at)
+        set_user_session(user_id: sess.user_id, session_id: sess.session_id, created_at: sess.created_at, updated_at: sess.updated_at, expired_at: sess.expired_at)
 
         json(
           userId: user.id,
@@ -576,7 +582,8 @@ module Isuconquest
 
       db_transaction do
         # sessionを更新
-        db.xquery('UPDATE user_sessions SET deleted_at=? WHERE user_id=? AND deleted_at IS NULL', request_at, json_params[:userId])
+        # db.xquery('UPDATE user_sessions SET deleted_at=? WHERE user_id=? AND deleted_at IS NULL', request_at, json_params[:userId])
+        update_user_sessions_deleted_at(user_id: json_params[:userId], deleted_at: request_at)
 
         session_id = generate_id()
         sess_id = generate_uuid()
@@ -588,7 +595,8 @@ module Isuconquest
           updated_at: request_at,
           expired_at: request_at + 86400,
         )
-        db.xquery('INSERT INTO user_sessions(id, user_id, session_id, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?, ?)', sess.id, sess.user_id, sess.session_id, sess.created_at, sess.updated_at, sess.expired_at)
+        # db.xquery('INSERT INTO user_sessions(id, user_id, session_id, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?, ?)', sess.id, sess.user_id, sess.session_id, sess.created_at, sess.updated_at, sess.expired_at)
+        set_user_session(user_id: sess.user_id, session_id: sess.session_id, created_at: sess.created_at, updated_at: sess.updated_at, expired_at: sess.expired_at)
 
         # すでにログインしているユーザはログイン処理をしない
         if complete_today_login?(user.last_activated_at, request_at)

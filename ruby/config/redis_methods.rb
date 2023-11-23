@@ -49,6 +49,59 @@ module RedisMethods
     actual
   end
 
+  # @param user_id [Integer]
+  # @param session_id [Integer]
+  # @param created_at [Integer]
+  # @param updated_at [Integer]
+  # @param expired_at [Integer]
+  # @param deleted_at [Integer]
+  def set_user_session(user_id:, session_id:, created_at:, updated_at:, expired_at:, deleted_at: 0)
+    $redis.set("user_session:#{user_id}:#{session_id}", {
+      user_id: user_id,
+      created_at: created_at,
+      updated_at: updated_at,
+      expired_at: expired_at,
+      deleted_at: deleted_at,
+    }.to_json)
+  end
+
+  # @param user_id [Integer]
+  # @param session_id [Integer]
+  # @param deleted_at [Integer]
+  def update_user_sessions_deleted_at(user_id:, session_id: nil, deleted_at:)
+    if session_id
+      # 単一セッションだけ更新
+      key = "user_session:#{user_id}:#{session_id}"
+      user_session = Oj.load($redis.get(key))
+      user_session.transform_keys!(&:to_sym)
+
+      user_session[:deleted_at] = deleted_at
+      $redis.set(key, user_session.to_json)
+    end
+
+    # 複数セッションまとめて更新
+    keys = $redis.keys("user_session:#{user_id}:*")
+    keys.each do |key|
+      user_session = Oj.load($redis.get(key))
+      user_session.transform_keys!(&:to_sym)
+
+      user_session[:deleted_at] = deleted_at
+      $redis.set(key, user_session.to_json)
+    end
+  end
+
+  def get_user_session(user_id:, session_id:, only_active: false)
+    key = "user_session:#{user_id}:#{session_id}"
+    user_session = Oj.load($redis.get(key))
+    user_session.transform_keys!(&:to_sym)
+
+    if only_active && user_session[:deleted_at] > 0
+      return nil
+    end
+
+    user_session
+  end
+
   def initialize_redis
     $redis.flushall
   end
