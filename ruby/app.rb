@@ -518,88 +518,90 @@ module Isuconquest
       request_at = get_request_time()
 
       db_transaction do
-        user_id = generate_id()
-        user = User.new(
-          id: user_id,
-          isu_coin: 0,
-          last_getreward_at: request_at,
-          last_activated_at: request_at,
-          registered_at: request_at,
-          created_at: request_at,
-          updated_at: request_at,
-        )
-
-        db.xquery('INSERT INTO users(id, last_activated_at, registered_at, last_getreward_at, created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?)', user.id, user.last_activated_at, user.registered_at, user.last_getreward_at, user.created_at, user.updated_at)
-
-        user_device_id = generate_id()
-        user_device = UserDevice.new(
-          id: user_device_id,
-          user_id: user.id,
-          platform_id: json_params.fetch(:viewerId),
-          platform_type: json_params.fetch(:platformType),
-          created_at: request_at,
-          updated_at: request_at,
-        )
-        db.xquery('INSERT INTO user_devices(id, user_id, platform_id, platform_type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)', user_device.id, user.id, json_params.fetch(:viewerId), json_params.fetch(:platformType), request_at, request_at)
-
-        # 初期デッキ付与
-        # TODO: Remove needless columns if necessary
-        init_card = db.xquery('SELECT `id`, `item_type`, `name`, `description`, `amount_per_sec`, `max_level`, `max_amount_per_sec`, `base_exp_per_level`, `gained_exp`, `shortening_min` FROM item_masters WHERE id=?', 2).first
-        raise HttpError.new(404, 'not found item') unless init_card
-
-        init_cards = Array.new(3) do
-          card_id = generate_id()
-          card = UserCard.new(
-            id: card_id,
-            user_id: user.id,
-            card_id: init_card.fetch(:id),
-            amount_per_sec: init_card.fetch(:amount_per_sec),
-            level: 1,
-            total_exp: 0,
+        db_session_transaction do
+          user_id = generate_id()
+          user = User.new(
+            id: user_id,
+            isu_coin: 0,
+            last_getreward_at: request_at,
+            last_activated_at: request_at,
+            registered_at: request_at,
             created_at: request_at,
             updated_at: request_at,
           )
-          db.xquery('INSERT INTO user_cards(id, user_id, card_id, amount_per_sec, level, total_exp, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', card.id, card.user_id, card.card_id, card.amount_per_sec, card.level, card.total_exp, card.created_at, card.updated_at)
 
-          card
+          db.xquery('INSERT INTO users(id, last_activated_at, registered_at, last_getreward_at, created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?)', user.id, user.last_activated_at, user.registered_at, user.last_getreward_at, user.created_at, user.updated_at)
+
+          user_device_id = generate_id()
+          user_device = UserDevice.new(
+            id: user_device_id,
+            user_id: user.id,
+            platform_id: json_params.fetch(:viewerId),
+            platform_type: json_params.fetch(:platformType),
+            created_at: request_at,
+            updated_at: request_at,
+          )
+          db.xquery('INSERT INTO user_devices(id, user_id, platform_id, platform_type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)', user_device.id, user.id, json_params.fetch(:viewerId), json_params.fetch(:platformType), request_at, request_at)
+
+          # 初期デッキ付与
+          # TODO: Remove needless columns if necessary
+          init_card = db.xquery('SELECT `id`, `item_type`, `name`, `description`, `amount_per_sec`, `max_level`, `max_amount_per_sec`, `base_exp_per_level`, `gained_exp`, `shortening_min` FROM item_masters WHERE id=?', 2).first
+          raise HttpError.new(404, 'not found item') unless init_card
+
+          init_cards = Array.new(3) do
+            card_id = generate_id()
+            card = UserCard.new(
+              id: card_id,
+              user_id: user.id,
+              card_id: init_card.fetch(:id),
+              amount_per_sec: init_card.fetch(:amount_per_sec),
+              level: 1,
+              total_exp: 0,
+              created_at: request_at,
+              updated_at: request_at,
+            )
+            db.xquery('INSERT INTO user_cards(id, user_id, card_id, amount_per_sec, level, total_exp, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', card.id, card.user_id, card.card_id, card.amount_per_sec, card.level, card.total_exp, card.created_at, card.updated_at)
+
+            card
+          end
+
+          deck_id = generate_id()
+          init_deck = UserDeck.new(
+            id: deck_id,
+            user_id: user.id,
+            user_card_id_1: init_cards.fetch(0).id,
+            user_card_id_2: init_cards.fetch(1).id,
+            user_card_id_3: init_cards.fetch(2).id,
+            created_at: request_at,
+            updated_at: request_at,
+          )
+          db.xquery('INSERT INTO user_decks(id, user_id, user_card_id_1, user_card_id_2, user_card_id_3, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)', init_deck.id, init_deck.user_id, init_deck.user_card_id_1, init_deck.user_card_id_2, init_deck.user_card_id_3, init_deck.created_at, init_deck.updated_at)
+
+          # ログイン処理
+          user, login_bonuses, presents = login_process(user_id, request_at)
+
+          # generate session
+          session_id = generate_id()
+          sess_id = generate_uuid()
+          sess = Session.new(
+            id: session_id,
+            user_id: user.id,
+            session_id: sess_id,
+            created_at: request_at,
+            updated_at: request_at,
+            expired_at: request_at + 86400,
+          )
+          # db.xquery('INSERT INTO user_sessions(id, user_id, session_id, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?, ?)', sess.id, sess.user_id, sess.session_id, sess.created_at, sess.updated_at, sess.expired_at)
+          db_session.xquery('INSERT INTO user_sessions(id, user_id, session_id, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?, ?)', sess.id, sess.user_id, sess.session_id, sess.created_at, sess.updated_at, sess.expired_at)
+
+          json(
+            userId: user.id,
+            viewerId: json_params.fetch(:viewerId),
+            sessionId: sess.session_id,
+            createdAt: request_at,
+            updatedResources: UpdatedResources.new(request_at, user, user_device, init_cards, [init_deck], nil, login_bonuses, presents).as_json,
+          )
         end
-
-        deck_id = generate_id()
-        init_deck = UserDeck.new(
-          id: deck_id,
-          user_id: user.id,
-          user_card_id_1: init_cards.fetch(0).id,
-          user_card_id_2: init_cards.fetch(1).id,
-          user_card_id_3: init_cards.fetch(2).id,
-          created_at: request_at,
-          updated_at: request_at,
-        )
-        db.xquery('INSERT INTO user_decks(id, user_id, user_card_id_1, user_card_id_2, user_card_id_3, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)', init_deck.id, init_deck.user_id, init_deck.user_card_id_1, init_deck.user_card_id_2, init_deck.user_card_id_3, init_deck.created_at, init_deck.updated_at)
-
-        # ログイン処理
-        user, login_bonuses, presents = login_process(user_id, request_at)
-
-        # generate session
-        session_id = generate_id()
-        sess_id = generate_uuid()
-        sess = Session.new(
-          id: session_id,
-          user_id: user.id,
-          session_id: sess_id,
-          created_at: request_at,
-          updated_at: request_at,
-          expired_at: request_at + 86400,
-        )
-        # db.xquery('INSERT INTO user_sessions(id, user_id, session_id, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?, ?)', sess.id, sess.user_id, sess.session_id, sess.created_at, sess.updated_at, sess.expired_at)
-        db_session.xquery('INSERT INTO user_sessions(id, user_id, session_id, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?, ?)', sess.id, sess.user_id, sess.session_id, sess.created_at, sess.updated_at, sess.expired_at)
-
-        json(
-          userId: user.id,
-          viewerId: json_params.fetch(:viewerId),
-          sessionId: sess.session_id,
-          createdAt: request_at,
-          updatedResources: UpdatedResources.new(request_at, user, user_device, init_cards, [init_deck], nil, login_bonuses, presents).as_json,
-        )
       end
     end
 
@@ -619,45 +621,47 @@ module Isuconquest
       check_viewer_id!(user.id, json_params[:viewerId])
 
       db_transaction do
-        # sessionを更新
-        # db.xquery('UPDATE user_sessions SET deleted_at=? WHERE user_id=? AND deleted_at IS NULL', request_at, json_params[:userId])
-        db_session.xquery('UPDATE user_sessions SET deleted_at=? WHERE user_id=? AND deleted_at IS NULL', request_at, json_params[:userId])
+        db_session_transaction do
+          # sessionを更新
+          # db.xquery('UPDATE user_sessions SET deleted_at=? WHERE user_id=? AND deleted_at IS NULL', request_at, json_params[:userId])
+          db_session.xquery('UPDATE user_sessions SET deleted_at=? WHERE user_id=? AND deleted_at IS NULL', request_at, json_params[:userId])
 
-        session_id = generate_id()
-        sess_id = generate_uuid()
-        sess = Session.new(
-          id: session_id,
-          user_id: json_params[:userId],
-          session_id: sess_id,
-          created_at: request_at,
-          updated_at: request_at,
-          expired_at: request_at + 86400,
-        )
-        # db.xquery('INSERT INTO user_sessions(id, user_id, session_id, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?, ?)', sess.id, sess.user_id, sess.session_id, sess.created_at, sess.updated_at, sess.expired_at)
-        db_session.xquery('INSERT INTO user_sessions(id, user_id, session_id, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?, ?)', sess.id, sess.user_id, sess.session_id, sess.created_at, sess.updated_at, sess.expired_at)
+          session_id = generate_id()
+          sess_id = generate_uuid()
+          sess = Session.new(
+            id: session_id,
+            user_id: json_params[:userId],
+            session_id: sess_id,
+            created_at: request_at,
+            updated_at: request_at,
+            expired_at: request_at + 86400,
+          )
+          # db.xquery('INSERT INTO user_sessions(id, user_id, session_id, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?, ?)', sess.id, sess.user_id, sess.session_id, sess.created_at, sess.updated_at, sess.expired_at)
+          db_session.xquery('INSERT INTO user_sessions(id, user_id, session_id, created_at, updated_at, expired_at) VALUES (?, ?, ?, ?, ?, ?)', sess.id, sess.user_id, sess.session_id, sess.created_at, sess.updated_at, sess.expired_at)
 
-        # すでにログインしているユーザはログイン処理をしない
-        if complete_today_login?(user.last_activated_at, request_at)
-          user.updated_at = request_at
-          user.last_activated_at = request_at
+          # すでにログインしているユーザはログイン処理をしない
+          if complete_today_login?(user.last_activated_at, request_at)
+            user.updated_at = request_at
+            user.last_activated_at = request_at
 
-          db.xquery('UPDATE users SET updated_at=?, last_activated_at=? WHERE id=?', request_at, request_at, json_params[:userId])
+            db.xquery('UPDATE users SET updated_at=?, last_activated_at=? WHERE id=?', request_at, request_at, json_params[:userId])
 
-          next json(
+            next json(
+              viewerId: json_params[:viewerId],
+              sessionId: sess.session_id,
+              updatedResources: UpdatedResources.new(request_at, user, nil, nil, nil, nil, nil, nil).as_json,
+            )
+          end
+
+          # login process
+          user, login_bonuses, presents = login_process(json_params[:userId], request_at)
+
+          json(
             viewerId: json_params[:viewerId],
             sessionId: sess.session_id,
-            updatedResources: UpdatedResources.new(request_at, user, nil, nil, nil, nil, nil, nil).as_json,
+            updatedResources: UpdatedResources.new(request_at, user, nil, nil, nil, nil, login_bonuses, presents).as_json,
           )
         end
-
-        # login process
-        user, login_bonuses, presents = login_process(json_params[:userId], request_at)
-
-        json(
-          viewerId: json_params[:viewerId],
-          sessionId: sess.session_id,
-          updatedResources: UpdatedResources.new(request_at, user, nil, nil, nil, nil, login_bonuses, presents).as_json,
-        )
       end
     end
 
