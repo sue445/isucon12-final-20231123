@@ -75,6 +75,8 @@ module Isuconquest
           case db_type
           when :main
             ENV.fetch('ISUCON_DB_HOST', '127.0.0.1')
+          when :session
+            ENV.fetch('ISUCON_DB_SESSION_HOST', '127.0.0.1')
           else
             raise "Unknown dg_type: #{db_type}"
           end
@@ -107,6 +109,22 @@ module Isuconquest
         return retval
       ensure
         db.query('ROLLBACK') unless done
+      end
+
+      def db_session
+        Thread.current[:db_session] ||= connect_db(db_type: :session)
+      end
+
+      def db_session_transaction(&block)
+        db_session.query('BEGIN')
+        done = false
+        retval = yield
+
+        db_session.query('COMMIT')
+        done = true
+        return retval
+      ensure
+        db_session.query('ROLLBACK') unless done
       end
 
       def check_one_time_token!(token, token_type, request_at)

@@ -9,3 +9,6 @@ PERL5LIB=/home/isucon/webapp/perl/local/lib/perl5
 # isucon-01
 REDIS_HOST=172.31.37.109
 ISUCON_DB_HOST=172.31.37.109
+
+# isucon-02
+ISUCON_DB_SESSION_HOST=172.31.44.144
