@@ -39,7 +39,7 @@ general-log = 0
 
 
 # Enable the slow query log to see queries with especially long duration
-slow_query_log         = on
+slow_query_log         = off
 slow_query_log_file    = /var/log/mysql/slow.log
 long_query_time        = 0
 #log_slow_rate_limit    = 1000
