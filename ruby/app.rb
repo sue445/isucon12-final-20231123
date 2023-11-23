@@ -481,9 +481,20 @@ module Isuconquest
       # connect_db(true)
       connect_db(batch: true)
 
-      out, status = Open3.capture2e("/bin/sh", "-c", "#{SQL_DIRECTORY}init.sh")
-      unless status.success?
-        raise HttpError.new(500, "Failed to initialize: #{out}")
+      # out, status = Open3.capture2e("/bin/sh", "-c", "#{SQL_DIRECTORY}init.sh")
+      # unless status.success?
+      #   raise HttpError.new(500, "Failed to initialize: #{out}")
+      # end
+
+      # 複数DB初期化する
+      [
+        ENV["ISUCON_DB_HOST"],
+        ENV["ISUCON_DB_SESSION_HOST"],
+      ].each do |host|
+        out, status = Open3.capture2e("/bin/sh", "-c", "#{SQL_DIRECTORY}init.sh #{host}")
+        unless status.success?
+          raise HttpError.new(500, "[#{host}] Failed to initialize: #{out}")
+        end
       end
 
       initialize_redis
