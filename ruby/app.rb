@@ -489,7 +489,7 @@ module Isuconquest
       # 複数DB初期化する
       [
         ENV["ISUCON_DB_HOST"],
-        ENV["ISUCON_DB_SESSION_HOST"],
+        # ENV["ISUCON_DB_SESSION_HOST"], # NOTE: sessionではinit.shを実行しない
       ].each do |host|
         out, status = Open3.capture2e("/bin/sh", "-c", "#{SQL_DIRECTORY}init.sh #{host}")
         unless status.success?
