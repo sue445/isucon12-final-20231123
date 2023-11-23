@@ -119,6 +119,8 @@ CREATE TABLE `present_all_masters` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
+ALTER TABLE present_all_masters ADD INDEX index_registered_start_at_and_registered_end_at (registered_start_at, registered_end_at);
+
 /* 全員プレゼント履歴テーブル */
 
 CREATE TABLE `user_present_all_received_history` (
@@ -131,6 +133,8 @@ CREATE TABLE `user_present_all_received_history` (
   `deleted_at` bigint default NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+ALTER TABLE user_present_all_received_history ADD INDEX index_user_id_and_present_all_id (user_id, present_all_id);
 
 /* ガチャマスタ */
 
@@ -220,6 +224,8 @@ CREATE TABLE `user_sessions` (
   PRIMARY KEY (`id`),
   UNIQUE uniq_session_id (`user_id`, `session_id`, `deleted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+ALTER TABLE user_sessions ADD INDEX index_session_id (session_id);
 
 /* 更新処理について利用するone time tokenの管理 */
 CREATE TABLE `user_one_time_tokens` (
