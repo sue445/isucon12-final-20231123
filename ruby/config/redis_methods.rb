@@ -73,6 +73,7 @@ module RedisMethods
       # 単一セッションだけ更新
       key = "user_session:#{user_id}:#{session_id}"
       user_session = Oj.load($redis.get(key))
+      user_session ||= {}
       user_session.transform_keys!(&:to_sym)
 
       user_session[:deleted_at] = deleted_at
@@ -83,6 +84,7 @@ module RedisMethods
     keys = $redis.keys("user_session:#{user_id}:*")
     keys.each do |key|
       user_session = Oj.load($redis.get(key))
+      user_session ||= {}
       user_session.transform_keys!(&:to_sym)
 
       user_session[:deleted_at] = deleted_at
@@ -93,11 +95,14 @@ module RedisMethods
   def get_user_session(user_id:, session_id:, only_active: false)
     key = "user_session:#{user_id}:#{session_id}"
     user_session = Oj.load($redis.get(key))
+    user_session ||= {}
     user_session.transform_keys!(&:to_sym)
 
-    if only_active && user_session[:deleted_at] > 0
+    if only_active && user_session[:deleted_at].to_i > 0
       return nil
     end
+
+    return nil if user_session.empty?
 
     user_session
   end
