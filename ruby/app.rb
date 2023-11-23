@@ -828,7 +828,8 @@ module Isuconquest
       request_at = get_request_time()
 
       # TODO: Remove needless columns if necessary
-      raise HttpError.new(404, 'not found user') unless db.xquery('SELECT `id`, `isu_coin`, `last_getreward_at`, `last_activated_at`, `registered_at`, `created_at`, `updated_at`, `deleted_at` FROM users WHERE id=?', user_id).first
+      user = db.xquery('SELECT `id`, `isu_coin`, `last_getreward_at`, `last_activated_at`, `registered_at`, `created_at`, `updated_at`, `deleted_at` FROM users WHERE id=?', user_id).first
+      raise HttpError.new(404, 'not found user') unless user
 
       # TODO: Remove needless columns if necessary
       item_list = db.xquery('SELECT `id`, `user_id`, `item_type`, `item_id`, `amount`, `created_at`, `updated_at`, `deleted_at` FROM user_items WHERE user_id = ?', user_id).to_a
