@@ -17,6 +17,7 @@ HOSTS = {
   host01: "isucon-01", # nginx, db, app(initialize), redis
   host02: "isucon-02", # db(session)
   host03: "isucon-03", # app(main)
+  host04: "isucon-04", # app(main)
 }
 
 INITIALIZE_ENDPOINT = "http://#{HOSTS[:host01]}/initialize"
@@ -114,7 +115,7 @@ namespace :deploy do
 
       # app
       case name
-      when :host01, :host03
+      when :host01, :host03, :host04
         exec ip_address, "#{BUNDLE} config set --local path 'vendor/bundle'", cwd: RUBY_APP_DIR
         exec ip_address, "#{BUNDLE} config set --local jobs $(nproc)", cwd: RUBY_APP_DIR
         exec ip_address, "#{BUNDLE} config set --local without development test", cwd: RUBY_APP_DIR
