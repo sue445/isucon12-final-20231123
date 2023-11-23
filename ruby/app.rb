@@ -621,6 +621,9 @@ module Isuconquest
           init_card = db.xquery('SELECT `id`, `item_type`, `name`, `description`, `amount_per_sec`, `max_level`, `max_amount_per_sec`, `base_exp_per_level`, `gained_exp`, `shortening_min` FROM item_masters WHERE id=?', 2).first
           raise HttpError.new(404, 'not found item') unless init_card
 
+          user_cards_sql_prefix = "INSERT INTO user_cards(id, user_id, card_id, amount_per_sec, level, total_exp, created_at, updated_at) VALUES "
+          user_cards_sql_values = []
+          user_cards_sql_binds = []
           init_cards = Array.new(3) do
             card_id = generate_id()
             card = UserCard.new(
@@ -633,10 +636,15 @@ module Isuconquest
               created_at: request_at,
               updated_at: request_at,
             )
-            db.xquery('INSERT INTO user_cards(id, user_id, card_id, amount_per_sec, level, total_exp, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', card.id, card.user_id, card.card_id, card.amount_per_sec, card.level, card.total_exp, card.created_at, card.updated_at)
+            # db.xquery('INSERT INTO user_cards(id, user_id, card_id, amount_per_sec, level, total_exp, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', card.id, card.user_id, card.card_id, card.amount_per_sec, card.level, card.total_exp, card.created_at, card.updated_at)
+
+            user_cards_sql_values << "(?, ?, ?, ?, ?, ?, ?, ?)"
+            user_cards_sql_binds << [card.id, card.user_id, card.card_id, card.amount_per_sec, card.level, card.total_exp, card.created_at, card.updated_at]
 
             card
           end
+
+          db.xquery(user_cards_sql_prefix + user_cards_sql_values.join(", "), *user_cards_sql_binds)
 
           deck_id = generate_id()
           init_deck = UserDeck.new(
