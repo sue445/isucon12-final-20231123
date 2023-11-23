@@ -27,13 +27,13 @@ disable-log-bin = 1
 
 # TODO: 下記はMySQLにhost全部のメモリを割り当てる前提なのでDBとappを分けてから有効化する
 # 物理メモリの8割
-# innodb_buffer_pool_size = 2959M
+innodb_buffer_pool_size = 2959M
 
 # innodb_buffer_pool_sizeの1/4程度
-# innodb_log_file_size = 739M
+innodb_log_file_size = 739M
 
 # TODO: ログを止める場合はlog_errorもコメントアウトする
-# general-log = 0
+general-log = 0
 
 # TODO: 終了直前に以降の行をコメントアウトする
 
