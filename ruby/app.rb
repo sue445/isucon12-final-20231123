@@ -19,8 +19,8 @@ require_relative "./config/sentry_methods"
 # require "mysql2-nested_hash_bind"
 # require_relative "./config/hash_group_by_prefix"
 # require_relative "./config/mysql_methods"
-# require_relative "./config/oj_encoder"
-# require_relative "./config/oj_to_json_patch"
+require_relative "./config/oj_encoder"
+require_relative "./config/oj_to_json_patch"
 require_relative "./config/redis_methods"
 # require_relative "./config/sidekiq"
 # require_relative "./config/sidekiq_methods"
@@ -48,6 +48,8 @@ module Isuconquest
 
     disable :logging
     set :show_exceptions, :after_handler
+
+    set :json_encoder, OjEncoder.instance
 
     DECK_CARD_NUMBER = 3
     PRESENT_COUNT_PER_PAGE = 100
