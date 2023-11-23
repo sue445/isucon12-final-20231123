@@ -213,6 +213,8 @@ CREATE TABLE `version_masters` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
+ALTER TABLE version_masters ADD INDEX index_status (status);
+
 CREATE TABLE `user_sessions` (
   `id` bigint NOT NULL,
   `user_id` bigint NOT NULL,
