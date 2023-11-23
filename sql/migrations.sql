@@ -1,3 +1,5 @@
+ALTER TABLE user_present_all_received_history ADD INDEX index_user_id_and_present_all_id (user_id, present_all_id);
+
 /*
 ALTER TABLE login_bonus_masters ADD INDEX index_start_at (start_at);
 
@@ -10,8 +12,6 @@ ALTER TABLE user_cards ADD INDEX index_card_id (card_id);
 ALTER TABLE user_items ADD INDEX index_item_id (item_id);
 
 ALTER TABLE user_one_time_tokens_and_token_type ADD INDEX index_token (token, token_type);
-
-ALTER TABLE user_present_all_received_history ADD INDEX index_user_id (user_id);
 
 ALTER TABLE version_masters ADD INDEX index_status (status);
 */
