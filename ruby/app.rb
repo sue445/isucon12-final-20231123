@@ -32,10 +32,6 @@ require_relative "./config/enable_monitoring"
 # require_relative "./config/thread_helper"
 
 module Isuconquest
-  include SentryMethods
-  include RedisMethods
-  # using Mysql2::NestedHashBind::QueryExtension
-
   class HttpError < StandardError
     attr_reader :code
 
@@ -46,6 +42,10 @@ module Isuconquest
   end
 
   class App < Sinatra::Base
+    include SentryMethods
+    include RedisMethods
+    # using Mysql2::NestedHashBind::QueryExtension
+
     disable :logging
     set :show_exceptions, :after_handler
 
