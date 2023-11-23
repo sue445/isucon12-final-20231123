@@ -179,7 +179,7 @@ module Isuconquest
           init_bonus = false
           # ボーナスの進捗取得
           query = 'SELECT * FROM user_login_bonuses WHERE user_id=? AND login_bonus_id=?'
-          user_bonus = db.xquery(query, user_id, bonus.fetch(:id)).first&.then { UserLoginBonus.new(_1) }
+          user_bonus = db.xquery(query, user_id, bonus.fetch(:id)).first&.then { UserLoginBonus.new(_1) } # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
           unless user_bonus
             init_bonus = true
 
@@ -211,7 +211,7 @@ module Isuconquest
 
           # 今回付与するリソース取得
           query = 'SELECT * FROM login_bonus_reward_masters WHERE login_bonus_id=? AND reward_sequence=?'
-          reward_item = db.xquery(query, bonus.fetch(:id), user_bonus.last_reward_sequence).first
+          reward_item = db.xquery(query, bonus.fetch(:id), user_bonus.last_reward_sequence).first # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
           raise HttpError.new(404, 'not found login bonus reward') unless reward_item
 
           obtain_item(user_id, reward_item.fetch(:item_id), reward_item.fetch(:item_type), reward_item.fetch(:amount), request_at)
@@ -219,10 +219,10 @@ module Isuconquest
           # 進捗の保存
           if init_bonus
             query = 'INSERT INTO user_login_bonuses(id, user_id, login_bonus_id, last_reward_sequence, loop_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-            db.xquery(query, user_bonus.id, user_bonus.user_id, user_bonus.login_bonus_id, user_bonus.last_reward_sequence, user_bonus.loop_count, user_bonus.created_at, user_bonus.updated_at)
+            db.xquery(query, user_bonus.id, user_bonus.user_id, user_bonus.login_bonus_id, user_bonus.last_reward_sequence, user_bonus.loop_count, user_bonus.created_at, user_bonus.updated_at) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
           else
             query = 'UPDATE user_login_bonuses SET last_reward_sequence=?, loop_count=?, updated_at=? WHERE id=?'
-            db.xquery(query, user_bonus.last_reward_sequence, user_bonus.loop_count, user_bonus.updated_at, user_bonus.id)
+            db.xquery(query, user_bonus.last_reward_sequence, user_bonus.loop_count, user_bonus.updated_at, user_bonus.id) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
           end
 
           send_login_bonuses.push(user_bonus)
@@ -239,7 +239,7 @@ module Isuconquest
           normal_present = PresentAllMaster.new(normal_present_)
 
           query = 'SELECT * FROM user_present_all_received_history WHERE user_id=? AND present_all_id=?'
-          user_present_all_received_history = db.xquery(query, user_id, normal_present.id).first
+          user_present_all_received_history = db.xquery(query, user_id, normal_present.id).first # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
           next if user_present_all_received_history # プレゼント配布済
 
           # user present boxに入れる
@@ -256,7 +256,7 @@ module Isuconquest
             updated_at: request_at,
           )
           query = 'INSERT INTO user_presents(id, user_id, sent_at, item_type, item_id, amount, present_message, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-          db.xquery(query, user_present.id, user_present.user_id, user_present.sent_at, user_present.item_type, user_present.item_id, user_present.amount, user_present.present_message, user_present.created_at, user_present.updated_at)
+          db.xquery(query, user_present.id, user_present.user_id, user_present.sent_at, user_present.item_type, user_present.item_id, user_present.amount, user_present.present_message, user_present.created_at, user_present.updated_at) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
 
           # historyに入れる
           present_history_id = generate_id()
@@ -277,7 +277,7 @@ module Isuconquest
             history.received_at,
             history.created_at,
             history.updated_at,
-          )
+          ) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
 
           obtain_presents.push(user_present)
         end
@@ -644,7 +644,7 @@ module Isuconquest
       gacha_data_list = []
       query = 'SELECT * FROM gacha_item_masters WHERE gacha_id=? ORDER BY id ASC'
       gacha_master_list.each do |v|
-        gacha_item = db.xquery(query, v.fetch(:id)).to_a
+        gacha_item = db.xquery(query, v.fetch(:id)).to_a # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
         raise HttpError.new(404, 'not found gacha item') if gacha_item.empty?
 
         gacha_data_list.push(
@@ -749,7 +749,7 @@ module Isuconquest
             updated_at: request_at,
           )
           query = 'INSERT INTO user_presents(id, user_id, sent_at, item_type, item_id, amount, present_message, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-          db.xquery(query, present.id, present.user_id, present.sent_at, present.item_type, present.item_id, present.amount, present.present_message, present.created_at, present.updated_at)
+          db.xquery(query, present.id, present.user_id, present.sent_at, present.item_type, present.item_id, present.amount, present.present_message, present.created_at, present.updated_at) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
 
           presents.push(present)
         end
@@ -830,7 +830,7 @@ module Isuconquest
           v.deleted_at = request_at
 
           query = 'UPDATE user_presents SET deleted_at=?, updated_at=? WHERE id=?'
-          db.xquery(query, request_at, request_at, v.id)
+          db.xquery(query, request_at, request_at, v.id) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
 
           obtain_item(v.user_id, v.item_id, v.item_type, v.amount, request_at)
         end
@@ -956,7 +956,7 @@ module Isuconquest
         WHERE ui.item_type = 3 AND ui.id=? AND ui.user_id=?
       EOF
       json_params[:items].each do |v|
-        item = db.xquery(query, v[:id], user_id).first&.then { ConsumeUserItemData.new(_1) }
+        item = db.xquery(query, v[:id], user_id).first&.then { ConsumeUserItemData.new(_1) } # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
         raise HttpError.new(404, '') unless item
 
         raise HttpError.new(400, 'item not enough') if v[:amount] > item.amount
@@ -988,7 +988,7 @@ module Isuconquest
 
         query = 'UPDATE user_items SET amount=?, updated_at=? WHERE id=?'
         items.each do |v|
-          db.xquery(query, v.amount - v.consume_amount, request_at, v.id)
+          db.xquery(query, v.amount - v.consume_amount, request_at, v.id) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
         end
 
         # get response data
