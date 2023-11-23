@@ -570,7 +570,7 @@ module Isuconquest
         end
       end
 
-      initialize_redis
+      # initialize_redis
 
       json(
         language: 'ruby',
