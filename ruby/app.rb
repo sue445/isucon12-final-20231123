@@ -945,13 +945,16 @@ module Isuconquest
         # 配布処理
         obtain_present.each do |v|
           raise HttpError.new(500, 'received present') if v.deleted_at
-          v.updated_at = request_at
-          v.deleted_at = request_at
-
-          db.xquery('UPDATE user_presents SET deleted_at=?, updated_at=? WHERE id=?', request_at, request_at, v.id) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
+          # v.updated_at = request_at
+          # v.deleted_at = request_at
+          #
+          # db.xquery('UPDATE user_presents SET deleted_at=?, updated_at=? WHERE id=?', request_at, request_at, v.id) # rubocop:disable Isucon/Mysql2/NPlusOneQuery 後で直す
 
           obtain_item(v.user_id, v.item_id, v.item_type, v.amount, request_at)
         end
+
+        user_present_ids = obtain_present.map(&:id)
+        db.xquery("UPDATE user_presents SET deleted_at=?, updated_at=? WHERE id IN (?)", request_at, request_at, user_present_ids)
       end
 
       json(
