@@ -75,6 +75,10 @@ GEM
     rack-protection (2.2.2)
       rack
     rainbow (3.1.1)
+    redis (5.0.8)
+      redis-client (>= 0.17.0)
+    redis-client (0.18.0)
+      connection_pool
     regexp_parser (2.8.2)
     reline (0.3.1)
       io-console (~> 0.5)
@@ -128,6 +132,7 @@ PLATFORMS
 
 DEPENDENCIES
   bcrypt
+  connection_pool
   datadog_thread_tracer
   ddtrace (>= 1.0.0)
   irb
@@ -138,6 +143,7 @@ DEPENDENCIES
   parallel
   puma
   rack-cors
+  redis
   rubocop-isucon
   rubocop_auto_corrector
   sentry-ruby
