@@ -8,7 +8,8 @@ EnvironmentFile=/home/isucon/secret_env
 
 User=isucon
 Group=isucon
-ExecStart=/home/isucon/.x /home/isucon/local/ruby/versions/3.3.0-dev/bin/bundle exec puma -e production -p 8080 -w 2
+# ExecStart=/home/isucon/.x /home/isucon/local/ruby/versions/3.3.0-dev/bin/bundle exec puma -e production -p 8080 -w 2
+ExecStart=/home/isucon/.x /home/isucon/local/ruby/versions/3.3.0-dev/bin/bundle exec puma -e production -C /home/isucon/webapp/ruby/config/puma_isucon.rb
 
 Restart   = always
 Type      = simple
