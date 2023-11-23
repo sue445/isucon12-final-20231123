@@ -45,7 +45,7 @@ module Isuconquest
   end
 
   class App < Sinatra::Base
-    enable :logging
+    disable :logging
     set :show_exceptions, :after_handler
 
     DECK_CARD_NUMBER = 3
