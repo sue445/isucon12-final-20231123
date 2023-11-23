@@ -15,7 +15,7 @@ require "json"
 # デプロイ先のサーバ
 HOSTS = {
   host01: "isucon-01", # nginx, db, app, redis
-  # host02: "isucon-02",
+  host02: "isucon-02", # db(session)
   # host03: "isucon-03",
 }
 
@@ -89,7 +89,7 @@ namespace :deploy do
 
       # mysql, mariadb
       case name
-      when :host01
+      when :host01, :host02
         exec ip_address, "sudo cp infra/mysql/isucon.cnf /etc/mysql/conf.d/isucon.cnf"
         exec ip_address, "sudo cp infra/mysql/mysqld.cnf /etc/mysql/mysql.conf.d/mysqld.cnf "
         exec ip_address, "sudo mysqld --verbose --help > /dev/null"
