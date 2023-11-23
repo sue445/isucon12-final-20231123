@@ -70,9 +70,17 @@ module Isuconquest
       end
 
       # def connect_db(batch = false)
-      def connect_db(batch: false)
+      def connect_db(batch: false, db_type: :main)
+        db_host =
+          case db_type
+          when :main
+            ENV.fetch('ISUCON_DB_HOST', '127.0.0.1')
+          else
+            raise "Unknown dg_type: #{db_type}"
+          end
+
         Mysql2::Client.new(
-          host: ENV.fetch('ISUCON_DB_HOST', '127.0.0.1'),
+          host: db_host,
           port: ENV.fetch('ISUCON_DB_PORT', '3306').to_i,
           username: ENV.fetch('ISUCON_DB_USER', 'isucon'),
           password: ENV.fetch('ISUCON_DB_PASSWORD', 'isucon'),
