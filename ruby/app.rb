@@ -943,6 +943,9 @@ module Isuconquest
 
       db_transaction do
         # 配布処理
+        user_present_ids = obtain_present.map(&:id)
+        db.xquery("UPDATE user_presents SET deleted_at=?, updated_at=? WHERE id IN (?)", request_at, request_at, user_present_ids)
+
         obtain_present.each do |v|
           raise HttpError.new(500, 'received present') if v.deleted_at
           # v.updated_at = request_at
@@ -952,9 +955,6 @@ module Isuconquest
 
           obtain_item(v.user_id, v.item_id, v.item_type, v.amount, request_at)
         end
-
-        user_present_ids = obtain_present.map(&:id)
-        db.xquery("UPDATE user_presents SET deleted_at=?, updated_at=? WHERE id IN (?)", request_at, request_at, user_present_ids)
       end
 
       json(
